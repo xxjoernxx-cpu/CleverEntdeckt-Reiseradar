@@ -4,7 +4,6 @@ import {
   ArrowUpDown,
   PlaneTakeoff,
   Bell,
-  Check,
   X,
   Info,
   Trash2,
@@ -156,7 +155,7 @@ export default function App() {
   const [selectedRegion, setSelectedRegion] = useState<string>('Alle');
   const [durationNights, setDurationNights] = useState<number>(4);
   const [travelers, setTravelers] = useState<number>(2);
-  const [maxBudgetPerPerson, setMaxBudgetPerPerson] = useState<number | null>(null); // null = Ohne Begrenzung (∞), sonst Betrag in EUR
+  const [maxBudgetPerPerson, setMaxBudgetPerPerson] = useState<number | null>(null);
   const [luggage, setLuggage] = useState<LuggageOption>('personal');
   const [includeNearbyAirports, setIncludeNearbyAirports] = useState<boolean>(true);
   const [includeSplitTickets, setIncludeSplitTickets] = useState<boolean>(true);
@@ -180,8 +179,6 @@ export default function App() {
   });
   const [isAlertDrawerOpen, setIsAlertDrawerOpen] = useState<boolean>(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
-  const [bookingConfirmed, setBookingConfirmed] = useState<boolean>(false);
-  const [bookingEmail, setBookingEmail] = useState<string>('xxjoernxx@yahoo.de');
   const [lastSearchSummary, setLastSearchSummary] = useState<string>('');
   const [affiliateConfig, setAffiliateConfig] = useState<AffiliatePartnerConfig>(() =>
     getSavedAffiliateConfig()
@@ -200,6 +197,41 @@ export default function App() {
     }
     return false;
   });
+
+  // Automatically determine whether the visitor is looking for Camping, Hiking (Wandern), Camper, or Standard Flight+Hotel
+  const activeTravelMode = useMemo<'standard' | 'camping_nature' | 'hiking' | 'camper'>(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (
+      q.includes('wander') ||
+      q.includes('trekking') ||
+      q.includes('berg') ||
+      q.includes('skiwander') ||
+      q.includes('asi')
+    ) {
+      return 'hiking';
+    }
+    if (
+      q.includes('wohnmobil') ||
+      q.includes('camper') ||
+      q.includes('kastenwagen')
+    ) {
+      return 'camper';
+    }
+    if (
+      selectedRegion === 'Camping & Natur' ||
+      q.includes('camping') ||
+      q.includes('stellplatz') ||
+      q.includes('mobilheim') ||
+      q.includes('glamping') ||
+      q.includes('zelt') ||
+      q.includes('natur')
+    ) {
+      return 'camping_nature';
+    }
+    return 'standard';
+  }, [searchQuery, selectedRegion]);
+
+  const isCampingOrNatureActive = activeTravelMode !== 'standard';
 
   const handleSaveAffiliateConfig = (newCfg: AffiliatePartnerConfig) => {
     setAffiliateConfig(newCfg);
@@ -255,7 +287,6 @@ export default function App() {
 
   const handleHubChange = (newHubCode: string) => {
     setOriginCode(newHubCode);
-    // Automatically switch to CHF when selecting a Swiss airport if user was on default EUR
     if (['ZRH', 'BSL', 'GVA'].includes(newHubCode) && userCurrency === 'EUR') {
       setUserCurrency('CHF');
     }
@@ -306,20 +337,30 @@ export default function App() {
         travelers
     );
 
-    const totalPerPerson = flightTotalPP + hotelTotalPP;
+    const campingPitchPerNightPP = Math.max(
+      14,
+      Math.round(cheapestHotel.pricePerNightTwoAdults * 0.22)
+    );
+    const campingTotalPP = campingPitchPerNightPP * durationNights;
+
+    const totalPerPerson = isCampingOrNatureActive
+      ? campingTotalPP
+      : flightTotalPP + hotelTotalPP;
     const referenceTotal = Math.round(
       dest.historicalAvgTotal * (durationNights / 4)
     );
     const savingsPct = Math.max(
       8,
-      Math.min(58, Math.round(((referenceTotal - totalPerPerson) / referenceTotal) * 100))
+      Math.min(58, Math.round(((referenceTotal - (flightTotalPP + hotelTotalPP)) / referenceTotal) * 100))
     );
-    const savingsEur = Math.max(18, referenceTotal - totalPerPerson);
+    const savingsEur = Math.max(18, referenceTotal - (flightTotalPP + hotelTotalPP));
 
     return {
       totalPerPerson,
       flightTotalPP,
       hotelTotalPP,
+      campingPitchPerNightPP,
+      campingTotalPP,
       chosenRoute,
       cheapestHotel,
       lowestDateStr: lowestCalendarDay?.dateStr || '2026-11-17',
@@ -336,11 +377,25 @@ export default function App() {
     const q = searchQuery.trim();
     if (!q) return baseList;
 
+    const qLower = q.toLowerCase();
+    const isGenericTopicQuery = [
+      'camping & natur',
+      'camping',
+      'wandern',
+      'wanderreisen',
+      'trekking',
+      'wohnmobil',
+      'camper',
+      'natur',
+    ].includes(qLower);
+
+    if (isGenericTopicQuery) return baseList;
+
     const hasMatchInBase = baseList.some(
       (d) =>
-        d.city.toLowerCase().includes(q.toLowerCase()) ||
-        d.country.toLowerCase().includes(q.toLowerCase()) ||
-        d.iata.toLowerCase().includes(q.toLowerCase())
+        d.city.toLowerCase().includes(qLower) ||
+        d.country.toLowerCase().includes(qLower) ||
+        d.iata.toLowerCase().includes(qLower)
     );
 
     if (!hasMatchInBase) {
@@ -373,14 +428,23 @@ export default function App() {
             'marrakesch-atlas',
           ].includes(dest.id);
 
+        const isTopicSearch = [
+          'camping & natur',
+          'camping',
+          'wandern',
+          'wanderreisen',
+          'trekking',
+          'wohnmobil',
+          'camper',
+          'natur',
+        ].includes(q);
+
         const matchesSearch =
           q === '' ||
-          ((q === 'camping & natur' || q === 'camping' || q === 'wandern' || q === 'natur') &&
-            isCampingNaturDestination) ||
+          (isTopicSearch && isCampingNaturDestination) ||
           dest.city.toLowerCase().includes(q) ||
           dest.country.toLowerCase().includes(q) ||
           dest.iata.toLowerCase().includes(q);
-        // If user explicitly typed a search query, don't hide results behind a region tab
         const matchesRegion =
           q !== '' ||
           selectedRegion === 'Alle' ||
@@ -410,6 +474,7 @@ export default function App() {
     includeSplitTickets,
     selectedMonth,
     sortBy,
+    isCampingOrNatureActive,
   ]);
 
   const activeDestination = useMemo(
@@ -470,7 +535,6 @@ export default function App() {
       );
     }
 
-    // Preserve active country filter if the selected package belongs to that country
     const currentQ = searchQuery.trim().toLowerCase();
     const matchesCurrentCountry =
       currentQ !== '' && pkg.country.toLowerCase().includes(currentQ);
@@ -481,7 +545,7 @@ export default function App() {
     setLastSearchSummary(
       `Komplettreise-Paket geladen: ${pkg.days} Tage (${pkg.nights} Nächte) ${
         pkg.cityShort
-      } ab ${formatCatalogPrice(pkg.priceEurPerPerson, userCurrency)} p.P.`
+      } – Richtpreis ab ${formatCatalogPrice(pkg.priceEurPerPerson, userCurrency)} p.P.`
     );
 
     const el = document.getElementById('routenoptimierer');
@@ -496,42 +560,56 @@ export default function App() {
     const q = searchQuery.trim();
     let targetDeal = enrichedDestinations[0];
 
-    // If user typed a destination and pressed Search, ensure it is persisted in customDestinations if newly generated
     if (q) {
-      if (selectedRegion !== 'Alle') {
-        setSelectedRegion('Alle');
-      }
-      const existingMatch = [...customDestinations, ...DESTINATIONS].find(
-        (d) =>
-          d.city.toLowerCase().includes(q.toLowerCase()) ||
-          d.country.toLowerCase().includes(q.toLowerCase()) ||
-          d.iata.toLowerCase().includes(q.toLowerCase())
-      );
+      const qLower = q.toLowerCase();
+      const isTopicSearch = [
+        'camping & natur',
+        'camping',
+        'wandern',
+        'wanderreisen',
+        'trekking',
+        'wohnmobil',
+        'camper',
+        'natur',
+      ].includes(qLower);
 
-      const dealToUse = existingMatch || createCustomDestinationDeal(q);
-      if (!existingMatch) {
-        setCustomDestinations((prev) =>
-          prev.some((p) => p.id === dealToUse.id) ? prev : [dealToUse, ...prev]
+      if (isTopicSearch) {
+        setSelectedRegion('Camping & Natur');
+      } else {
+        if (selectedRegion !== 'Alle' && selectedRegion !== 'Camping & Natur') {
+          setSelectedRegion('Alle');
+        }
+        const existingMatch = [...customDestinations, ...DESTINATIONS].find(
+          (d) =>
+            d.city.toLowerCase().includes(qLower) ||
+            d.country.toLowerCase().includes(qLower) ||
+            d.iata.toLowerCase().includes(qLower)
         );
-      }
 
-      const calc = computeBestDealForDestination(dealToUse);
-      // If budget filter would have hidden their searched destination, automatically lift budget filter
-      if (maxBudgetPerPerson !== null && calc.totalPerPerson > maxBudgetPerPerson) {
-        setMaxBudgetPerPerson(null);
+        const dealToUse = existingMatch || createCustomDestinationDeal(q);
+        if (!existingMatch) {
+          setCustomDestinations((prev) =>
+            prev.some((p) => p.id === dealToUse.id) ? prev : [dealToUse, ...prev]
+          );
+        }
+
+        const calc = computeBestDealForDestination(dealToUse);
+        if (maxBudgetPerPerson !== null && calc.totalPerPerson > maxBudgetPerPerson) {
+          setMaxBudgetPerPerson(null);
+        }
+        targetDeal = { dest: dealToUse, calc };
       }
-      targetDeal = { dest: dealToUse, calc };
     }
 
     if (targetDeal) {
       setActiveDestId(targetDeal.dest.id);
       setLastSearchSummary(
-        `Bestpreis-Analyse für „${targetDeal.dest.city}“ abgeschlossen: Günstigste Kombination ab ${formatMoney(
-          targetDeal.calc.totalPerPerson,
-          userCurrency
-        )} p.P. (${durationNights} Nächte inkl. Flug & Hotel via ${
-          targetDeal.calc.chosenRoute.outbound.originCode
-        })`
+        isCampingOrNatureActive
+          ? `Camping-, Camper- & Wander-Vergleich für „${targetDeal.dest.city}“ aktiv: Direktlinks zu camping.info, ASI Reisen, CamperDays & TUI Camper.`
+          : `Tiefpreis-Analyse für „${targetDeal.dest.city}“ abgeschlossen: Richtpreis ab ${formatMoney(
+              targetDeal.calc.totalPerPerson,
+              userCurrency
+            )} p.P. (${durationNights} Nächte ab ${targetDeal.calc.chosenRoute.outbound.originCode})`
       );
     } else {
       setLastSearchSummary(
@@ -575,17 +653,33 @@ export default function App() {
 
   const overallLowestDeal = enrichedDestinations[0];
 
-  // Live preview of the searched destination (e.g. "Bangkok") and its cheapest partner from the user's configured affiliate partners
+  // Live preview of the searched destination and its cheapest partner (respecting Camping/Wandern/Camper mode!)
   const searchPreviewTarget = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) {
       return overallLowestDeal || { dest: activeDestination, calc: activeDestCalc };
     }
+    const qLower = q.toLowerCase();
+    const isTopicSearch = [
+      'camping & natur',
+      'camping',
+      'wandern',
+      'wanderreisen',
+      'trekking',
+      'wohnmobil',
+      'camper',
+      'natur',
+    ].includes(qLower);
+
+    if (isTopicSearch) {
+      return overallLowestDeal || { dest: activeDestination, calc: activeDestCalc };
+    }
+
     const existingMatch = [...customDestinations, ...DESTINATIONS].find(
       (d) =>
-        d.city.toLowerCase().includes(q.toLowerCase()) ||
-        d.country.toLowerCase().includes(q.toLowerCase()) ||
-        d.iata.toLowerCase().includes(q.toLowerCase())
+        d.city.toLowerCase().includes(qLower) ||
+        d.country.toLowerCase().includes(qLower) ||
+        d.iata.toLowerCase().includes(qLower)
     );
     const dealToUse = existingMatch || createCustomDestinationDeal(q);
     const calc = computeBestDealForDestination(dealToUse);
@@ -602,6 +696,7 @@ export default function App() {
     includeNearbyAirports,
     includeSplitTickets,
     selectedMonth,
+    isCampingOrNatureActive,
   ]);
 
   const searchPreviewLinks = useMemo(() => {
@@ -610,15 +705,16 @@ export default function App() {
       originCode: calc.chosenRoute.outbound.originCode,
       destCode: dest.iata,
       destCity: dest.city,
-      hotelName: calc.cheapestHotel?.name || dest.city,
+      hotelName: dest.city,
       carrierName: calc.chosenRoute.outbound.carrier,
       departureDateStr: calc.lowestDateStr,
       durationNights,
       travelers,
       userCurrency,
       affiliateConfig,
+      travelMode: activeTravelMode,
     });
-  }, [searchPreviewTarget, durationNights, travelers, userCurrency, affiliateConfig]);
+  }, [searchPreviewTarget, durationNights, travelers, userCurrency, affiliateConfig, activeTravelMode]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
@@ -707,39 +803,43 @@ export default function App() {
           <div className="max-w-[1280px] mx-auto px-6">
             <div className="max-w-3xl mb-6">
               <p className="text-xs font-medium text-slate-500">
-                Unabhängige Tiefpreis-Suchmaschine <span aria-hidden="true">·</span> Multi-Airport-Radius <span aria-hidden="true">·</span> 2× One-Way Split-Ticketing <span aria-hidden="true">·</span> Live-Währungsumrechnung ({userCurrency})
+                Unabhängige Tiefpreis-Suchmaschine <span aria-hidden="true">·</span> Multi-Airport-Radius <span aria-hidden="true">·</span> Camping, Wandern & Pauschalreisen <span aria-hidden="true">·</span> Live-Währungsumrechnung ({userCurrency})
               </p>
               <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-slate-900 mt-2 leading-[1.15] text-balance">
-                {searchQuery.trim()
-                  ? `Günstige Reisen & Angebote für ${searchQuery.trim()} direkt im Vergleich.`
-                  : 'Finden Sie günstige Reisen, egal wohin oder zu Ihrem Traumziel.'}
+                {isCampingOrNatureActive
+                  ? 'Campingplätze, Wohnmobile & Wanderreisen direkt zum günstigsten Preis finden.'
+                  : searchQuery.trim()
+                  ? `Günstigste Reisen & Angebote für ${searchQuery.trim()} direkt im Vergleich.`
+                  : 'Finden Sie die günstigste Reise, egal wohin oder zu Ihrem Traumziel.'}
               </h1>
               <p className="text-base text-slate-600 mt-3 leading-relaxed">
-                Statt starrer Einzelflüge kombiniert der Algorithmus automatisch Nachbarflughäfen
-                im 180-km-Umkreis, getrennte Hin- und Rückflug-Airlines sowie reduzierte
-                Unterkunftskontingente — direkt umgerechnet in Ihre gewünschte Zahlungswährung.
+                {isCampingOrNatureActive
+                  ? 'Spezial-Modus für Natururlauber aktiv: Vergleichen Sie über 23.000 Campingplätze bei camping.info, geführte & individuelle Wanderreisen bei ASI Reisen sowie Wohnmobile bei CamperDays und TUI Camper.'
+                  : 'Unser Tiefpreis-Finder kombiniert Nachbarflughäfen im 180-km-Umkreis, günstige Wochentage und öffnet Ihre Partner-Portale vorab sortiert nach dem niedrigsten tatsächlich buchbaren Live-Preis.'}
               </p>
             </div>
 
-            {/* Country / Topic Quick-Selection Bar (Ideal for Spain, Turkey & Italy embeds) */}
+            {/* Country / Topic Quick-Selection Bar (Ideal for Spain, Turkey, Italy & Camping/Wandern) */}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 bg-blue-50/80 border border-blue-200/80 rounded-xl px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold text-slate-800">
-                  {searchQuery.trim()
+                  {isCampingOrNatureActive
+                    ? 'Camping, Camper & Wandern aktiv:'
+                    : searchQuery.trim()
                     ? `Vorauswahl „${searchQuery.trim()}“ aktiv (${enrichedDestinations.length} Regionen):`
-                    : 'Länder-Spezial direkt wählen:'}
+                    : 'Länder- & Themen-Spezial direkt wählen:'}
                 </span>
                 {[
-                  { label: 'Alle Ziele', value: '', region: 'Alle', defaultDest: 'palma-mallorca' },
+                  { label: 'Alle Ziele (Flug & Hotel)', value: '', region: 'Alle', defaultDest: 'palma-mallorca' },
                   { label: 'Spanien (4 Regionen)', value: 'Spanien', region: 'Alle', defaultDest: 'palma-mallorca' },
                   { label: 'Türkei (4 Regionen)', value: 'Türkei', region: 'Alle', defaultDest: 'antalya-riviera' },
                   { label: 'Italien (4 Regionen)', value: 'Italien', region: 'Alle', defaultDest: 'rom-latium' },
-                  { label: 'Camping & Natur (Wandern & Camper)', value: '', region: 'Camping & Natur', defaultDest: 'mailand-comer-see' },
+                  { label: 'Camping & Natur (camping.info / ASI / Camper)', value: '', region: 'Camping & Natur', defaultDest: 'mailand-comer-see' },
                 ].map((item) => {
                   const isActive =
                     item.region === 'Camping & Natur'
-                      ? selectedRegion === 'Camping & Natur' && searchQuery.trim() === ''
-                      : selectedRegion !== 'Camping & Natur' &&
+                      ? isCampingOrNatureActive
+                      : !isCampingOrNatureActive &&
                         searchQuery.trim().toLowerCase() === item.value.toLowerCase();
                   return (
                     <button
@@ -816,13 +916,13 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2. Destination / Everywhere Search */}
+                {/* 2. Destination / Everywhere / Camping / Wandern Search */}
                 <div className="lg:col-span-3">
                   <label
                     htmlFor="dest-search"
                     className="block text-xs font-semibold text-slate-700 mb-1.5"
                   >
-                    Reiseziel (Leer = „Überall zum Tiefstpreis“)
+                    Reiseziel oder Thema (z.B. Spanien, Camping, Wandern)
                   </label>
                   <div className="relative">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -831,7 +931,7 @@ export default function App() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Alle Ziele oder z.B. Lissabon, PMI..."
+                      placeholder="Alle Ziele oder z.B. Mallorca, Camping, Wandern..."
                       className="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
                     />
                     {searchQuery && (
@@ -915,7 +1015,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 4. Max Budget Slider & Uncapped Input (starts at 0, no upper limit) */}
+                {/* 4. Max Budget Slider & Uncapped Input */}
                 <div className="lg:col-span-3">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <label
@@ -968,7 +1068,6 @@ export default function App() {
                     </div>
                   </div>
                   {(() => {
-                    // Dynamic slider ceiling that expands endlessly as user moves or types higher values
                     const dynamicMaxEur =
                       maxBudgetPerPerson === null
                         ? 5000
@@ -988,7 +1087,6 @@ export default function App() {
                           onChange={(e) => {
                             const v = Number(e.target.value);
                             if (v >= dynamicMaxEur) {
-                              // Expanding ceiling when dragging right, or setting uncapped
                               setMaxBudgetPerPerson(null);
                             } else {
                               setMaxBudgetPerPerson(v);
@@ -1098,11 +1196,11 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Primary "Reise suchen & zum günstigsten Partner" Single Button */}
+                  {/* Primary "Reise suchen & zum günstigsten Partner" Single Button — automatically routes Camping/Wandern to camping.info / ASI Reisen / CamperDays! */}
                   <a
                     href={searchPreviewLinks.bestDealDirectUrl}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="sponsored noopener noreferrer"
                     onClick={() => {
                       setTimeout(() => handleExecuteSearch(), 80);
                     }}
@@ -1110,49 +1208,58 @@ export default function App() {
                   >
                     <Search className="w-4 h-4 shrink-0" />
                     <span>
-                      {searchQuery.trim()
-                        ? `„${searchQuery.trim()}“ suchen → ${searchPreviewLinks.bestDealProviderName} (${formatMoney(
+                      {isCampingOrNatureActive
+                        ? `Günstigsten Anbieter öffnen → ${searchPreviewLinks.bestDealProviderName} (ab ${formatMoney(
                             searchPreviewTarget.calc.totalPerPerson,
                             userCurrency
                           )})`
-                        : `Günstigste Reise suchen → ${searchPreviewLinks.bestDealProviderName}`}
+                        : searchQuery.trim()
+                        ? `„${searchQuery.trim()}“ günstigster Preis → ${searchPreviewLinks.bestDealProviderName} (ab ${formatMoney(
+                            searchPreviewTarget.calc.totalPerPerson,
+                            userCurrency
+                          )})`
+                        : `Günstigste Reise finden → ${searchPreviewLinks.bestDealProviderName} (ab ${formatMoney(
+                            searchPreviewTarget.calc.totalPerPerson,
+                            userCurrency
+                          )})`}
                     </span>
                     <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                   </a>
                 </div>
               </div>
 
-              {/* Live Partner Best-Price Comparison Strip for the Search Query */}
-              {(searchQuery.trim() || lastSearchSummary) && (
+              {/* Live Partner Best-Price Comparison Strip (Automatically switches to camping.info, ASI Reisen, CamperDays & TUI Camper when Camping/Wandern is active!) */}
+              {(searchQuery.trim() || isCampingOrNatureActive || lastSearchSummary) && (
                 <div className="mt-3 pt-3 border-t border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3">
                   <div className="space-y-1">
                     <div className="font-bold text-slate-900 flex flex-wrap items-center gap-2">
                       <span>
-                        Bestpreis-Prüfung Ihrer Partner für „{searchPreviewTarget.dest.city.split('&')[0].trim()}“ ({durationNights} Nächte):
+                        {isCampingOrNatureActive
+                          ? `Spezial-Partnervergleich (Camping, Wandern & Camper) für „${searchPreviewTarget.dest.city.split('&')[0].trim()}“ (${durationNights} Nächte):`
+                          : `Tiefpreis-Prüfung Ihrer Partner für „${searchPreviewTarget.dest.city.split('&')[0].trim()}“ (${durationNights} Nächte):`}
                       </span>
                       <span className="text-emerald-700 font-mono">
-                        Testsieger: {searchPreviewLinks.bestDealProviderName} ab{' '}
-                        {formatMoney(searchPreviewTarget.calc.totalPerPerson, userCurrency)} p.P.
+                        1. Platz: {searchPreviewLinks.bestDealProviderName} (Richtwert ab{' '}
+                        {formatMoney(searchPreviewTarget.calc.totalPerPerson, userCurrency)} p.P.)
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-                      <span>Geprüfte Partner (Ihre Vorgabe):</span>
+                      <span>Passende Partner (Klick öffnet günstigste Angebote zuerst):</span>
                       {searchPreviewLinks.comparedPartnerOffers.map((offer, idx) => (
-                        <span
+                        <a
                           key={offer.id}
-                          className={`px-2 py-0.5 rounded font-mono ${
+                          href={offer.url}
+                          target="_blank"
+                          rel="sponsored noopener noreferrer"
+                          className={`px-2 py-0.5 rounded font-mono transition-colors ${
                             offer.isWinner
-                              ? 'bg-emerald-600 text-white font-bold'
-                              : 'bg-white border border-slate-200 text-slate-700'
+                              ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-bold'
+                              : 'bg-white hover:bg-slate-100 border border-slate-200 text-slate-700'
                           }`}
                         >
-                          {idx + 1}. {offer.providerShortName}:{' '}
-                          {formatMoney(
-                            searchPreviewTarget.calc.totalPerPerson + offer.priceDeltaEur,
-                            userCurrency
-                          )}{' '}
-                          {offer.isWinner ? '✓ Günstigster' : ''}
-                        </span>
+                          {idx + 1}. {offer.providerShortName}{' '}
+                          {offer.isWinner ? '✓ Günstigster' : '→'}
+                        </a>
                       ))}
                     </div>
                   </div>
@@ -1161,7 +1268,7 @@ export default function App() {
                     <a
                       href={searchPreviewLinks.bestDealDirectUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="sponsored noopener noreferrer"
                       className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
                     >
                       <span>Zum günstigsten Anbieter ({searchPreviewLinks.bestDealProviderName})</span>
@@ -1172,24 +1279,31 @@ export default function App() {
               )}
             </form>
 
-            {/* Instant Top-of-Page Country / Destination Results (visible immediately when ?ziel=Spanien, /spanien, etc. is opened) */}
-            {searchQuery.trim() !== '' && enrichedDestinations.length > 0 && (
+            {/* Instant Top-of-Page Country / Destination / Camping Results */}
+            {(searchQuery.trim() !== '' || isCampingOrNatureActive) && enrichedDestinations.length > 0 && (
               <div className="mt-6 bg-blue-950 text-white rounded-2xl p-5 border border-blue-800 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                   <div>
                     <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      Direkt-Angebote für „{searchQuery.trim()}“ ({durationNights} Nächte ab {activeHub.name})
+                      {isCampingOrNatureActive
+                        ? `Camping-, Camper- & Wander-Angebote (${durationNights} Nächte)`
+                        : `Tiefpreis-Angebote für „${searchQuery.trim()}“ (${durationNights} Nächte ab ${activeHub.name})`}
                     </span>
                     <h2 className="text-lg sm:text-xl font-bold text-white mt-0.5">
-                      Wählen Sie Ihre Wunsch-Region in {searchQuery.trim()} — sofort buchbar bei Ihren Partnern
+                      {isCampingOrNatureActive
+                        ? 'Wählen Sie Ihre Natur-Region — direkt zu camping.info, ASI Reisen, CamperDays & TUI Camper'
+                        : `Wählen Sie Ihre Wunsch-Region in ${searchQuery.trim()} — vorab sortiert nach niedrigstem Live-Preis`}
                     </h2>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedRegion('Alle');
+                    }}
                     className="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-blue-100 text-xs font-semibold rounded-lg border border-blue-700 transition-colors cursor-pointer self-start sm:self-auto shrink-0"
                   >
-                    Alle Länder anzeigen ×
+                    Alle Länder & Kategorien anzeigen ×
                   </button>
                 </div>
 
@@ -1199,13 +1313,14 @@ export default function App() {
                       originCode: calc.chosenRoute.outbound.originCode,
                       destCode: dest.iata,
                       destCity: dest.city,
-                      hotelName: calc.cheapestHotel.name,
+                      hotelName: dest.city,
                       carrierName: calc.chosenRoute.outbound.carrier,
                       departureDateStr: calc.lowestDateStr,
                       durationNights,
                       travelers,
                       userCurrency,
                       affiliateConfig,
+                      travelMode: activeTravelMode,
                     });
                     const isSelected = activeDestination.id === dest.id;
 
@@ -1233,7 +1348,9 @@ export default function App() {
                               {dest.country} · {dest.iata}
                             </span>
                             <span className="font-mono text-emerald-400 font-semibold">
-                              -{calc.savingsPct}% Sparvorteil
+                              {isCampingOrNatureActive
+                                ? `Ø ${dest.avgTempMayOct} °C Natur`
+                                : `-${calc.savingsPct}% Sparvorteil`}
                             </span>
                           </div>
                           <h3 className="text-base font-bold text-white mt-1 leading-snug">
@@ -1241,15 +1358,18 @@ export default function App() {
                           </h3>
                           <div className="mt-2 flex items-baseline justify-between">
                             <span className="text-xs text-slate-300">
-                              Richtpreis ({durationNights} Nächte):
+                              {isCampingOrNatureActive
+                                ? `Stellplatz (${durationNights} Nächte):`
+                                : `Richtpreis (${durationNights} Nächte):`}
                             </span>
                             <span className="text-lg font-mono font-bold text-emerald-400 tabular-nums">
                               ab {formatMoney(calc.totalPerPerson, userCurrency)} p.P.
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-400 mt-1">
-                            Flug ab {formatMoney(calc.flightTotalPP, userCurrency)} + Hotel ab{' '}
-                            {formatMoney(calc.hotelTotalPP, userCurrency)} · Freie Hotelwahl im Live-Vergleich
+                            {isCampingOrNatureActive
+                              ? `Campingplatz ab ${formatMoney(calc.campingPitchPerNightPP, userCurrency)}/Nacht · Wanderreisen & Wohnmobile verfügbar`
+                              : `Flug ab ${formatMoney(calc.flightTotalPP, userCurrency)} + 3★/4★ Hotel ab ${formatMoney(calc.hotelTotalPP, userCurrency)} (Tiefpreis-Sortierung)`}
                           </p>
                         </div>
 
@@ -1257,52 +1377,97 @@ export default function App() {
                           className="mt-3 pt-2.5 border-t border-slate-800 flex flex-col gap-1.5"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <a
-                            href={cardLinks.expediaPackageUrl}
-                            target="_blank"
-                            rel="sponsored noopener noreferrer"
-                            className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
-                          >
-                            <span>Hotels in {dest.city.split('&')[0].trim()} bei Expedia</span>
-                            <ExternalLink className="w-3 h-3 shrink-0" />
-                          </a>
-                          <a
-                            href={cardLinks.expediaFlightUrl}
-                            target="_blank"
-                            rel="sponsored noopener noreferrer"
-                            className="w-full py-1.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
-                          >
-                            <span>
-                              Flüge ({calc.chosenRoute.outbound.originCode} ⇄ {dest.iata}) bei Expedia
-                            </span>
-                            <ExternalLink className="w-3 h-3 shrink-0" />
-                          </a>
-                          <div className="grid grid-cols-3 gap-1.5">
-                            <a
-                              href={cardLinks.check24HolidayUrl}
-                              target="_blank"
-                              rel="sponsored noopener noreferrer"
-                              className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
-                            >
-                              CHECK24
-                            </a>
-                            <a
-                              href={cardLinks.abInDenUrlaubUrl}
-                              target="_blank"
-                              rel="sponsored noopener noreferrer"
-                              className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors truncate"
-                            >
-                              Ab in d. Urlaub
-                            </a>
-                            <a
-                              href={cardLinks.tripComUrl}
-                              target="_blank"
-                              rel="sponsored noopener noreferrer"
-                              className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
-                            >
-                              Trip.com
-                            </a>
-                          </div>
+                          {isCampingOrNatureActive ? (
+                            /* CAMPING, WANDERN & CAMPER BUTTONS (NO EXPEDIA!) */
+                            <>
+                              <a
+                                href={cardLinks.campingInfoUrl}
+                                target="_blank"
+                                rel="sponsored noopener noreferrer"
+                                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
+                              >
+                                <span>Campingplätze ({dest.country}) bei camping.info</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                              <a
+                                href={cardLinks.snowTrexUrl}
+                                target="_blank"
+                                rel="sponsored noopener noreferrer"
+                                className="w-full py-1.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
+                              >
+                                <span>Wander- & Naturreisen bei ASI Reisen</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <a
+                                  href={cardLinks.camperDaysUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
+                                >
+                                  CamperDays
+                                </a>
+                                <a
+                                  href={cardLinks.tuiCamperUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
+                                >
+                                  TUI Camper
+                                </a>
+                              </div>
+                            </>
+                          ) : (
+                            /* STANDARD FLIGHT + HOTEL BUTTONS (PRE-SORTED LOWEST PRICE FIRST) */
+                            <>
+                              <a
+                                href={cardLinks.expediaPackageUrl}
+                                target="_blank"
+                                rel="sponsored noopener noreferrer"
+                                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
+                              >
+                                <span>Günstigste Hotels in {dest.city.split('&')[0].trim()} (Expedia)</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                              <a
+                                href={cardLinks.expediaFlightUrl}
+                                target="_blank"
+                                rel="sponsored noopener noreferrer"
+                                className="w-full py-1.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
+                              >
+                                <span>
+                                  Günstigste Flüge ({calc.chosenRoute.outbound.originCode} ⇄ {dest.iata})
+                                </span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                <a
+                                  href={cardLinks.check24HolidayUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
+                                >
+                                  CHECK24
+                                </a>
+                                <a
+                                  href={cardLinks.abInDenUrlaubUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors truncate"
+                                >
+                                  Ab in d. Urlaub
+                                </a>
+                                <a
+                                  href={cardLinks.tripComUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
+                                >
+                                  Trip.com
+                                </a>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     );
@@ -1327,19 +1492,22 @@ export default function App() {
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <span className="text-xs text-slate-500 block">
-                    Aktueller Gesamt-Testsieger ({durationNights} Nächte)
+                    {isCampingOrNatureActive
+                      ? `Günstigstes Camping- & Naturziel (${durationNights} Nächte)`
+                      : `Günstigstes Reiseziel im Ranking (${durationNights} Nächte)`}
                   </span>
                   <div className="flex items-baseline justify-between mt-1">
                     <strong className="text-base font-bold text-slate-900 truncate pr-2">
                       {overallLowestDeal.dest.city.split('&')[0]}
                     </strong>
                     <span className="text-lg font-mono font-bold text-emerald-700 tabular-nums shrink-0">
-                      {formatMoney(overallLowestDeal.calc.totalPerPerson, userCurrency)} p.P.
+                      ab {formatMoney(overallLowestDeal.calc.totalPerPerson, userCurrency)} p.P.
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Flug {formatMoney(overallLowestDeal.calc.flightTotalPP, userCurrency)} + Hotel{' '}
-                    {formatMoney(overallLowestDeal.calc.hotelTotalPP, userCurrency)}
+                    {isCampingOrNatureActive
+                      ? `Direkt buchbar über camping.info, ASI Reisen & CamperDays`
+                      : `Flug ab ${formatMoney(overallLowestDeal.calc.flightTotalPP, userCurrency)} + Hotel ab ${formatMoney(overallLowestDeal.calc.hotelTotalPP, userCurrency)}`}
                   </p>
                 </div>
 
@@ -1356,13 +1524,13 @@ export default function App() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Spart {formatMoney(overallLowestDeal.calc.savingsEur, userCurrency)} p.P. zum Normaltarif
+                    Spart ca. {formatMoney(overallLowestDeal.calc.savingsEur, userCurrency)} p.P. zum Standardtarif
                   </p>
                 </div>
 
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <span className="text-xs text-slate-500 block">
-                    Bester Reisemonat & Wochentag
+                    Günstigster Reisemonat & Wochentag
                   </span>
                   <div className="flex items-baseline justify-between mt-1">
                     <strong className="text-base font-bold text-slate-900">
@@ -1393,15 +1561,15 @@ export default function App() {
               </div>
             )}
 
-            {/* Curated Complete Package Offers ("15 Tage Bangkok ab 999,– €") */}
+            {/* Curated Complete Package Offers */}
             <div className="mt-8 pt-8 border-t border-slate-200">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
                 <div>
                   <span className="text-xs font-medium text-slate-500">
-                    Fertige Komplettreise-Pakete (Flug + Hotel inkl. Gepäck)
+                    Beliebte Komplettreise-Pakete (Richtpreise inkl. Flug + Unterkunft — beim Partner nach Tiefpreis sortiert)
                   </span>
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
-                    Aktuelle Pauschal- & Langzeit-Kracher zum Komplettpreis
+                    Pauschal- & Langzeit-Ideen zum Komplettpreis
                   </h2>
                 </div>
                 <span className="text-xs text-slate-500">
@@ -1454,78 +1622,80 @@ export default function App() {
                       travelers,
                       userCurrency,
                       affiliateConfig,
+                      travelMode: activeTravelMode,
                     });
 
-                  return (
-                    <div
-                      key={pkg.id}
-                      onClick={() => handleSelectCompletePackage(pkg)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleSelectCompletePackage(pkg);
-                        }
-                      }}
-                      className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl p-4 transition-colors cursor-pointer flex flex-col justify-between border border-slate-800"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between text-xs text-slate-400">
-                          <span>
-                            {pkg.country} <span aria-hidden="true">·</span> {pkg.nights} Nächte
-                          </span>
-                          <span className="font-mono text-emerald-400 font-semibold tabular-nums">
-                            Statt {formatCatalogPrice(pkg.regularPriceEur, userCurrency)}
-                          </span>
+                    return (
+                      <div
+                        key={pkg.id}
+                        onClick={() => handleSelectCompletePackage(pkg)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleSelectCompletePackage(pkg);
+                          }
+                        }}
+                        className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl p-4 transition-colors cursor-pointer flex flex-col justify-between border border-slate-800"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-slate-400">
+                            <span>
+                              {pkg.country} <span aria-hidden="true">·</span> {pkg.nights} Nächte
+                            </span>
+                            <span className="font-mono text-emerald-400 font-semibold tabular-nums">
+                              Richtwert (Tiefpreis-Sortierung)
+                            </span>
+                          </div>
+
+                          <h3 className="text-base sm:text-lg font-bold text-white mt-1 leading-snug">
+                            {pkg.days} Tage {pkg.cityShort}{' '}
+                            <span className="text-emerald-400 font-mono tabular-nums whitespace-nowrap">
+                              ab {formatCatalogPrice(pkg.priceEurPerPerson, userCurrency)}
+                            </span>
+                          </h3>
+
+                          <p className="text-xs text-slate-300 mt-1.5">
+                            {pkg.boardLabel} · Freie Hotelwahl beim Anbieter
+                          </p>
                         </div>
 
-                        <h3 className="text-base sm:text-lg font-bold text-white mt-1 leading-snug">
-                          {pkg.days} Tage {pkg.cityShort}{' '}
-                          <span className="text-emerald-400 font-mono tabular-nums whitespace-nowrap">
-                            ab {formatCatalogPrice(pkg.priceEurPerPerson, userCurrency)}
-                          </span>
-                        </h3>
-
-                        <p className="text-xs text-slate-300 mt-1.5">
-                          {pkg.boardLabel} · {pkg.hotelSummary}
-                        </p>
-                      </div>
-
-                      <div
-                        className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2 text-xs"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleSelectCompletePackage(pkg)}
-                          className="text-slate-200 hover:text-white font-semibold cursor-pointer"
+                        <div
+                          className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2 text-xs"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          Paket im Rechner öffnen →
-                        </button>
-                        <a
-                          href={pkgLinks.bestDealDirectUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-                        >
-                          <span>Zum günstigsten Preis ({pkgLinks.bestDealProviderName})</span>
-                          <ExternalLink className="w-3 h-3 shrink-0" />
-                        </a>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectCompletePackage(pkg)}
+                            className="text-slate-200 hover:text-white font-semibold cursor-pointer"
+                          >
+                            Im Rechner öffnen →
+                          </button>
+                          <a
+                            href={pkgLinks.bestDealDirectUrl}
+                            target="_blank"
+                            rel="sponsored noopener noreferrer"
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+                          >
+                            <span>Günstigster Preis ({pkgLinks.bestDealProviderName})</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                  );
-                });
+                    );
+                  });
                 })()}
               </div>
             </div>
 
-            {/* Official CHECK24 Package Search Widget (Partner ID 1176801), Expedia Banner (camref 1100l6tjov) & DiscoverCars Banner (a_aid CleverEntdeckt) */}
+            {/* Official Expedia Live Search Widget + CHECK24 Package Search Widget + Partner Banners */}
             <Check24PackageWidget
               partnerId={affiliateConfig.customCheck24Url || '1176801'}
               fallbackDirectUrl={searchPreviewLinks.check24HolidayUrl}
               expediaCamref={affiliateConfig.customExpediaUrl || '1100l6tjov'}
               expediaDirectUrl={searchPreviewLinks.expediaPackageUrl}
+              expediaFlightDirectUrl={searchPreviewLinks.expediaFlightUrl}
               discoverCarsDirectUrl={searchPreviewLinks.rentalCarUrl}
               tuiCamperDirectUrl={searchPreviewLinks.tuiCamperUrl}
               camperDaysDirectUrl={searchPreviewLinks.camperDaysUrl}
@@ -1546,8 +1716,9 @@ export default function App() {
                   {enrichedDestinations.length} Reiseziele im Budget ({userCurrency})
                 </p>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mt-1 text-balance">
-                  Alle Destinationen sortiert nach echtem Komplettpreis (Flug + {durationNights}{' '}
-                  Nächte Hotel + Gepäck)
+                  {isCampingOrNatureActive
+                    ? `Alle Natur- & Camping-Regionen sortiert nach günstigstem Preis (${durationNights} Nächte)`
+                    : `Alle Destinationen sortiert nach günstigstem Richtpreis (Flug + ${durationNights} Nächte Unterkunft)`}
                 </h2>
               </div>
 
@@ -1572,7 +1743,9 @@ export default function App() {
                       onClick={() => setSelectedRegion(reg)}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                         selectedRegion === reg
-                          ? 'bg-white text-slate-900 shadow-2xs'
+                          ? reg === 'Camping & Natur'
+                            ? 'bg-emerald-700 text-white shadow-2xs'
+                            : 'bg-white text-slate-900 shadow-2xs'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -1600,23 +1773,32 @@ export default function App() {
             </div>
 
             {/* Dedicated Camping, Wohnmobil & Wander-/Naturreisen Partner Hub when "Camping & Natur" is selected */}
-            {selectedRegion === 'Camping & Natur' && (
+            {isCampingOrNatureActive && (
               <div className="mb-8 bg-emerald-950 text-white rounded-2xl p-5 border border-emerald-800 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                   <div>
                     <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      Spezial-Rubrik: Camping, Wohnmobil, Wandern & Naturreisen
+                      Spezial-Rubrik aktiv: Camping, Wohnmobil, Wandern & Naturreisen
                     </span>
                     <h3 className="text-lg sm:text-xl font-bold text-white mt-0.5">
-                      Campingplätze, Wohnmobile & geführte Wander-/Trekkingreisen direkt buchen
+                      Alle Karten & Buttons leiten Sie jetzt direkt zu camping.info, ASI Reisen, CamperDays & TUI Camper
                     </h3>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSelectedRegion('Alle')}
+                    onClick={() => {
+                      setSelectedRegion('Alle');
+                      if (
+                        ['camping', 'wandern', 'camper', 'wohnmobil', 'natur', 'trekking'].includes(
+                          searchQuery.trim().toLowerCase()
+                        )
+                      ) {
+                        setSearchQuery('');
+                      }
+                    }}
                     className="px-3 py-1.5 bg-emerald-900 hover:bg-emerald-800 text-emerald-100 text-xs font-semibold rounded-lg border border-emerald-700 transition-colors cursor-pointer self-start sm:self-auto shrink-0"
                   >
-                    Alle Kategorien anzeigen ×
+                    Zurück zu Flug & Hotel ×
                   </button>
                 </div>
 
@@ -1629,7 +1811,7 @@ export default function App() {
                   >
                     <div>
                       <span className="text-[11px] font-mono text-emerald-400 font-semibold">
-                        Campingplätze & Glamping
+                        1. Campingplätze & Glamping
                       </span>
                       <h4 className="text-base font-bold text-white mt-1">camping.info</h4>
                       <p className="text-slate-300 mt-1 leading-relaxed">
@@ -1637,7 +1819,7 @@ export default function App() {
                       </p>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-emerald-400 font-semibold">
-                      <span>Campingplätze finden</span>
+                      <span>Günstigste Plätze finden</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </div>
                   </a>
@@ -1650,7 +1832,7 @@ export default function App() {
                   >
                     <div>
                       <span className="text-[11px] font-mono text-emerald-400 font-semibold">
-                        Wandern, Trekking & Skiwandern
+                        2. Wandern, Trekking & Skiwandern
                       </span>
                       <h4 className="text-base font-bold text-white mt-1">ASI Reisen</h4>
                       <p className="text-slate-300 mt-1 leading-relaxed">
@@ -1664,6 +1846,27 @@ export default function App() {
                   </a>
 
                   <a
+                    href={searchPreviewLinks.camperDaysUrl}
+                    target="_blank"
+                    rel="sponsored noopener noreferrer"
+                    className="bg-slate-900/90 hover:bg-slate-900 border border-emerald-700/60 rounded-xl p-4 flex flex-col justify-between transition-colors"
+                  >
+                    <div>
+                      <span className="text-[11px] font-mono text-emerald-400 font-semibold">
+                        3. Wohnmobil-Preisvergleich
+                      </span>
+                      <h4 className="text-base font-bold text-white mt-1">CamperDays</h4>
+                      <p className="text-slate-300 mt-1 leading-relaxed">
+                        Testsieger-Preisvergleich für Wohnmobile & Kastenwagen mit 100 % transparenter Versicherung.
+                      </p>
+                    </div>
+                    <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-emerald-400 font-semibold">
+                      <span>Günstigste Camper</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </div>
+                  </a>
+
+                  <a
                     href={searchPreviewLinks.tuiCamperUrl}
                     target="_blank"
                     rel="sponsored noopener noreferrer"
@@ -1671,7 +1874,7 @@ export default function App() {
                   >
                     <div>
                       <span className="text-[11px] font-mono text-emerald-400 font-semibold">
-                        Wohnmobile & Camper
+                        4. Wohnmobile & Camper
                       </span>
                       <h4 className="text-base font-bold text-white mt-1">TUI Camper</h4>
                       <p className="text-slate-300 mt-1 leading-relaxed">
@@ -1680,27 +1883,6 @@ export default function App() {
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-emerald-400 font-semibold">
                       <span>Zu TUI Camper</span>
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    </div>
-                  </a>
-
-                  <a
-                    href={searchPreviewLinks.camperDaysUrl}
-                    target="_blank"
-                    rel="sponsored noopener noreferrer"
-                    className="bg-slate-900/90 hover:bg-slate-900 border border-emerald-700/60 rounded-xl p-4 flex flex-col justify-between transition-colors"
-                  >
-                    <div>
-                      <span className="text-[11px] font-mono text-emerald-400 font-semibold">
-                        Wohnmobil-Preisvergleich
-                      </span>
-                      <h4 className="text-base font-bold text-white mt-1">CamperDays</h4>
-                      <p className="text-slate-300 mt-1 leading-relaxed">
-                        Testsieger-Preisvergleich für Wohnmobile & Kastenwagen mit 100 % transparenter Versicherung.
-                      </p>
-                    </div>
-                    <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-emerald-400 font-semibold">
-                      <span>Preise vergleichen</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </div>
                   </a>
@@ -1721,7 +1903,7 @@ export default function App() {
                 </h3>
                 <p className="text-sm text-slate-600 mt-1">
                   Erhöhen Sie das Maximalbudget oder aktivieren Sie Nachbarflughäfen und
-                  Split-Ticketing, um wieder Tiefpreise freizuschalten.
+                  Split-Ticketing, um wieder alle Tiefpreise anzuzeigen.
                 </p>
                 <button
                   type="button"
@@ -1768,11 +1950,15 @@ export default function App() {
                           {/* Quiet unboxed metadata line */}
                           <div className="flex items-center justify-between text-xs text-slate-500">
                             <span>
-                              #{index + 1} Tiefpreis-Rang <span aria-hidden="true">·</span> Ab{' '}
-                              {calc.chosenRoute.outbound.originCode}
+                              #{index + 1} Tiefpreis-Rang <span aria-hidden="true">·</span>{' '}
+                              {isCampingOrNatureActive
+                                ? `Natur & Camping (${dest.country})`
+                                : `Ab ${calc.chosenRoute.outbound.originCode}`}
                             </span>
                             <span className="font-mono font-semibold text-emerald-700 tabular-nums">
-                              -{calc.savingsPct}% unter 20-Wochen-Ø
+                              {isCampingOrNatureActive
+                                ? `Ø ${dest.avgTempMayOct} °C`
+                                : `-${calc.savingsPct}% unter 20-Wochen-Ø`}
                             </span>
                           </div>
 
@@ -1780,24 +1966,43 @@ export default function App() {
                             {dest.tagline}
                           </p>
 
-                          {/* Transparent Price Breakdown Table inside Card */}
+                          {/* Transparent Breakdown Table inside Card */}
                           <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5 text-xs">
-                            <div className="flex items-center justify-between text-slate-600">
-                              <span>
-                                Hin- & Rückflug ({calc.chosenRoute.outbound.carrier})
-                              </span>
-                              <span className="font-mono font-medium text-slate-900 tabular-nums">
-                                {formatMoney(calc.flightTotalPP, userCurrency)} p.P.
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-slate-600">
-                              <span className="truncate pr-2">
-                                {durationNights} Nächte {calc.cheapestHotel.name}
-                              </span>
-                              <span className="font-mono font-medium text-slate-900 tabular-nums shrink-0">
-                                {formatMoney(calc.hotelTotalPP, userCurrency)} p.P.
-                              </span>
-                            </div>
+                            {isCampingOrNatureActive ? (
+                              <>
+                                <div className="flex items-center justify-between text-slate-600">
+                                  <span>Campingplatz / Stellplatz (camping.info)</span>
+                                  <span className="font-mono font-medium text-emerald-700 tabular-nums">
+                                    ab {formatMoney(calc.campingPitchPerNightPP, userCurrency)} / Nacht p.P.
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-slate-600">
+                                  <span>Wandern & Trekking (ASI Reisen)</span>
+                                  <span className="font-medium text-slate-900">
+                                    Geführt & individuell
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex items-center justify-between text-slate-600">
+                                  <span>
+                                    Hin- & Rückflug ({calc.chosenRoute.outbound.carrier})
+                                  </span>
+                                  <span className="font-mono font-medium text-slate-900 tabular-nums">
+                                    ab {formatMoney(calc.flightTotalPP, userCurrency)} p.P.
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-slate-600">
+                                  <span className="truncate pr-2">
+                                    {durationNights} Nächte 3★–4★ Unterkunft (Tiefpreis)
+                                  </span>
+                                  <span className="font-mono font-medium text-slate-900 tabular-nums shrink-0">
+                                    ab {formatMoney(calc.hotelTotalPP, userCurrency)} p.P.
+                                  </span>
+                                </div>
+                              </>
+                            )}
                             <div className="flex items-center justify-between text-slate-500">
                               <span>Restaurant-Index & Tagesticket vor Ort</span>
                               <span className="font-mono tabular-nums">
@@ -1809,12 +2014,13 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Card Footer with Complete Package Banner ("15 Tage Bangkok ab 999,– €") & Direct Booking Links */}
+                      {/* Card Footer with Best-Price Orientation & Mode-Aware Partner Buttons */}
                       <div className="px-5 py-4 bg-slate-50/80 border-t border-slate-100 space-y-3">
-                        {/* Explicit Complete Price Headline Banner */}
                         <div className="pb-2.5 border-b border-slate-200/70">
                           <span className="text-[11px] font-medium text-slate-500 block">
-                            Komplettreise-Angebot (Flug + Hotel inkl. Gepäck p.P.):
+                            {isCampingOrNatureActive
+                              ? `Camping- & Natur-Richtpreis (${durationNights} Nächte Stellplatz p.P.):`
+                              : `Richtpreis (Flug + ${durationNights} Nächte Unterkunft — Tiefpreis-Sortierung):`}
                           </span>
                           <div className="text-base font-bold text-slate-900 mt-0.5 flex flex-wrap items-baseline justify-between gap-1">
                             <span>
@@ -1826,20 +2032,22 @@ export default function App() {
                           </div>
                           <div className="flex items-center justify-between text-[11px] text-slate-500 mt-0.5">
                             <span>
-                              {durationNights} Nächte · Bei {travelers} Pers. gesamt:{' '}
+                              {durationNights} Nächte · Für {travelers} Pers. gesamt:{' '}
                               <strong className="font-mono text-slate-700 tabular-nums">
-                                {formatCatalogPrice(calc.totalPerPerson * travelers, userCurrency)}
+                                ab {formatCatalogPrice(calc.totalPerPerson * travelers, userCurrency)}
                               </strong>
                             </span>
-                            <span className="font-mono text-slate-400 line-through tabular-nums">
-                              Statt {formatCatalogPrice(calc.referenceTotal, userCurrency)}
+                            <span className="text-emerald-700 font-semibold">
+                              Sortiert nach Tiefpreis
                             </span>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs text-slate-500">
-                            Abflug ab {calc.chosenRoute.outbound.originCode} ({calc.chosenRoute.outbound.carrier})
+                            {isCampingOrNatureActive
+                              ? `Partner: camping.info · ASI · CamperDays`
+                              : `Abflug ab ${calc.chosenRoute.outbound.originCode} (${calc.chosenRoute.outbound.carrier})`}
                           </span>
 
                           <div className="flex items-center gap-2">
@@ -1870,20 +2078,64 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Direct Booking Buttons right on the Destination Card */}
+                        {/* Direct Booking Buttons right on the Destination Card (Strictly Mode-Aware!) */}
                         {(() => {
                           const cardLinks = buildProviderBookingLinks({
                             originCode: calc.chosenRoute.outbound.originCode,
                             destCode: calc.chosenRoute.outbound.destCode,
                             destCity: dest.city,
-                            hotelName: calc.cheapestHotel.name,
+                            hotelName: dest.city,
                             carrierName: calc.chosenRoute.outbound.carrier,
                             departureDateStr: calc.lowestDateStr,
                             durationNights,
                             travelers,
                             userCurrency,
                             affiliateConfig,
+                            travelMode: activeTravelMode,
                           });
+
+                          if (isCampingOrNatureActive) {
+                            return (
+                              <div className="pt-2.5 border-t border-slate-200/70 space-y-1.5">
+                                <a
+                                  href={cardLinks.campingInfoUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                                >
+                                  <span>Campingplätze in {dest.country} bei camping.info</span>
+                                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                </a>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  <a
+                                    href={cardLinks.snowTrexUrl}
+                                    target="_blank"
+                                    rel="sponsored noopener noreferrer"
+                                    className="py-1.5 px-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-semibold rounded-md text-center transition-colors truncate"
+                                  >
+                                    ASI Wandern
+                                  </a>
+                                  <a
+                                    href={cardLinks.camperDaysUrl}
+                                    target="_blank"
+                                    rel="sponsored noopener noreferrer"
+                                    className="py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-md text-center transition-colors truncate"
+                                  >
+                                    CamperDays
+                                  </a>
+                                  <a
+                                    href={cardLinks.tuiCamperUrl}
+                                    target="_blank"
+                                    rel="sponsored noopener noreferrer"
+                                    className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-semibold rounded-md text-center transition-colors truncate"
+                                  >
+                                    TUI Camper
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          }
+
                           return (
                             <div className="pt-2.5 border-t border-slate-200/70 space-y-1.5">
                               <a
@@ -1892,7 +2144,7 @@ export default function App() {
                                 rel="sponsored noopener noreferrer"
                                 className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
                               >
-                                <span>Hotels in {dest.city.split('&')[0].trim()} bei Expedia</span>
+                                <span>Günstigste Hotels in {dest.city.split('&')[0].trim()} (Expedia)</span>
                                 <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                               </a>
                               <div className="grid grid-cols-3 gap-1.5">
@@ -1950,9 +2202,12 @@ export default function App() {
           includeSplitTickets={includeSplitTickets}
           originCode={originCode}
           userCurrency={userCurrency}
+          travelers={travelers}
+          affiliateConfig={affiliateConfig}
+          isCampingMode={isCampingOrNatureActive}
         />
 
-        {/* Section 03: Route & Split-Ticket Optimizer + Hotel Configurator */}
+        {/* Section 03: Route & Split-Ticket Optimizer + Hotel / Camping Configurator */}
         <RouteOptimizerSection
           destination={activeDestination}
           originCode={originCode}
@@ -1967,12 +2222,18 @@ export default function App() {
           onSelectHotel={setSelectedHotelId}
           onSavePriceAlert={handleTogglePriceAlert}
           onOpenBookingSummary={() => {
-            setBookingConfirmed(false);
             setIsBookingModalOpen(true);
           }}
           isAlertSaved={isCurrentDestSaved}
           userCurrency={userCurrency}
           affiliateConfig={affiliateConfig}
+          isCampingMode={isCampingOrNatureActive}
+          onToggleCampingMode={(camping) => {
+            setSelectedRegion(camping ? 'Camping & Natur' : 'Alle');
+            if (!camping && ['camping', 'wandern', 'camper', 'wohnmobil', 'natur', 'trekking'].includes(searchQuery.trim().toLowerCase())) {
+              setSearchQuery('');
+            }
+          }}
         />
 
         {/* Section 04: Interactive Affiliate & Monetization Cockpit (Hidden in Public Customer Mode) */}
@@ -1986,13 +2247,14 @@ export default function App() {
               originCode: activeDestCalc.chosenRoute.outbound.originCode,
               destCode: activeDestCalc.chosenRoute.outbound.destCode,
               destCity: activeDestination.city,
-              hotelName: activeDestCalc.cheapestHotel.name,
+              hotelName: activeDestination.city,
               carrierName: activeDestCalc.chosenRoute.outbound.carrier,
               departureDateStr: selectedDateStr,
               durationNights,
               travelers,
               userCurrency,
               affiliateConfig,
+              travelMode: activeTravelMode,
             })}
           />
         )}
@@ -2005,7 +2267,7 @@ export default function App() {
                 04. Preis-Algorithmus & Nachweisbare Einsparungen
               </p>
               <h2 className="text-2xl font-bold tracking-tight text-slate-900 mt-1 text-balance">
-                Wie CleverEntdeckt, Sparflug & Reiseradar systematisch bis zu 42 % unter Standard-Buchungsportalen bleibt
+                Wie CleverEntdeckt, Sparflug & Reiseradar systematisch die günstigsten Angebote findet
               </h2>
             </div>
 
@@ -2021,22 +2283,19 @@ export default function App() {
                   Große Drehkreuze wie Frankfurt (FRA), München (MUC) oder Zürich (ZRH) berechnen
                   hohe Passagier- und Sicherheitsgebühren. Unser Rechner bezieht Regionalflughäfen
                   wie Hahn, Memmingen, Weeze oder Basel automatisch ein — und rechnet das
-                  ÖPNV-Bahnticket direkt in den Endpreis ein.
+                  ÖPNV-Bahnticket direkt in den Richtpreis ein.
                 </p>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-5">
                 <div className="text-xs font-mono font-semibold text-blue-600 tabular-nums">
-                  Hebel 02 · Ø {formatMoney(44, userCurrency, { showMinus: true })} pro Person
+                  Hebel 02 · Automatische Tiefpreis-Sortierung
                 </div>
                 <h3 className="text-base font-bold text-slate-900 mt-1">
-                  2× One-Way Split-Ticketing (Airline-Mix)
+                  Direkt zum günstigsten Live-Angebot
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Klassische Hin- und Rückflugtarife erzwingen oft teure Buchungsklassen, sobald
-                  ein Flugabschnitt stark gebucht ist. Durch die Kombination zweier unabhängiger
-                  Einzeltickets (z.B. Hinflug Ryanair am Morgen, Rückflug Eurowings am Abend)
-                  sichern Sie sich auf beiden Strecken den niedrigsten Tarif.
+                  Unsere Partner-Links übergeben nicht nur Reiseziel, Datum und Personenanzahl, sondern aktivieren beim Partner direkt die Sortierung „Niedrigster Preis zuerst“ — und leiten Camping-, Wohnmobil- und Wander-Anfragen gezielt an camping.info, ASI Reisen, CamperDays und TUI Camper weiter.
                 </p>
               </div>
 
@@ -2169,9 +2428,9 @@ export default function App() {
 
                       <div className="mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-xs">
                         <div>
-                          <span className="text-slate-500">Aktueller Bestpreis: </span>
+                          <span className="text-slate-500">Richtpreis: </span>
                           <strong className="font-mono text-emerald-700 font-bold tabular-nums">
-                            {formatMoney(alert.currentBestPrice, userCurrency)} p.P.
+                            ab {formatMoney(alert.currentBestPrice, userCurrency)} p.P.
                           </strong>
                         </div>
                         <button
@@ -2216,13 +2475,14 @@ export default function App() {
           originCode: activeDestCalc.chosenRoute.outbound.originCode,
           destCode: activeDestCalc.chosenRoute.outbound.destCode,
           destCity: activeDestination.city,
-          hotelName: selectedHotelObj.name,
+          hotelName: activeDestination.city,
           carrierName: activeDestCalc.chosenRoute.outbound.carrier,
           departureDateStr: selectedDateStr,
           durationNights,
           travelers,
           userCurrency,
           affiliateConfig,
+          travelMode: activeTravelMode,
         });
 
         return (
@@ -2258,105 +2518,114 @@ export default function App() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Ausgewählte Unterkunft ({durationNights} Nächte):</span>
-                    <span className="font-semibold text-slate-900">{selectedHotelObj.name}</span>
+                    <span className="text-slate-500">Gewählte Kategorie ({durationNights} Nächte):</span>
+                    <span className="font-semibold text-slate-900">{selectedHotelObj.category}</span>
                   </div>
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline text-sm">
                     <span className="font-bold text-slate-900">
-                      Berechneter Komplettpreis ({travelers} Pers.):
+                      Richtpreis ({travelers} Pers.):
                     </span>
                     <span className="text-lg font-mono font-bold text-emerald-700 tabular-nums">
-                      {formatMoney(activeDestCalc.totalPerPerson * travelers, userCurrency)} (
+                      ab {formatMoney(activeDestCalc.totalPerPerson * travelers, userCurrency)} (ab{' '}
                       {formatMoney(activeDestCalc.totalPerPerson, userCurrency)} p.P.)
                     </span>
                   </div>
                 </div>
 
-                {/* 1. Flight Providers (Only User's Official Partners) */}
+                {/* 1. Camping, Camper & Wandern (Highlighted at top when in Camping/Nature mode!) */}
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
-                    Schritt 1: Flug direkt bei unseren Partnern buchen ({activeDestCalc.chosenRoute.outbound.originCode} → {activeDestCalc.chosenRoute.outbound.destCode})
+                  <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2">
+                    Campingplätze, Wanderreisen & Wohnmobile (Spezial-Partner)
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <a
-                      href={modalLinks.tripComUrl}
-                      target="_blank"
-                      rel="sponsored noopener noreferrer"
-                      className="p-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
-                    >
-                      <span>Trip.com (Flug- & Kombi-Suche)</span>
-                      <ExternalLink className="w-4 h-4 shrink-0" />
-                    </a>
-                    <a
-                      href={modalLinks.expediaFlightUrl}
-                      target="_blank"
-                      rel="sponsored noopener noreferrer"
-                      className="p-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-xl flex items-center justify-between transition-colors"
-                    >
-                      <span>Expedia Flugsuche öffnen</span>
-                      <ExternalLink className="w-4 h-4 shrink-0" />
-                    </a>
-                  </div>
-                </div>
-
-                {/* 2. Hotel, Package & Extras Providers (Only User's Official Partners) */}
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
-                    Schritt 2: Pauschalreise, Hotel, Mietwagen & Aktivitäten buchen
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <a
-                      href={modalLinks.check24HolidayUrl}
+                      href={modalLinks.campingInfoUrl}
                       target="_blank"
                       rel="sponsored noopener noreferrer"
                       className="p-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span className="truncate pr-2">CHECK24 Pauschalreisen & Hotels</span>
+                      <span>camping.info (Campingplätze & Glamping)</span>
                       <ExternalLink className="w-4 h-4 shrink-0" />
                     </a>
                     <a
-                      href={modalLinks.abInDenUrlaubUrl}
+                      href={modalLinks.snowTrexUrl}
                       target="_blank"
                       rel="sponsored noopener noreferrer"
-                      className="p-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
+                      className="p-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>Ab in den Urlaub (Pauschal & Deals)</span>
+                      <span>ASI Reisen (Wander- & Trekkingreisen)</span>
                       <ExternalLink className="w-4 h-4 shrink-0" />
                     </a>
+                    <a
+                      href={modalLinks.camperDaysUrl}
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      className="p-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
+                    >
+                      <span>CamperDays (Wohnmobil-Preisvergleich)</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                    <a
+                      href={modalLinks.tuiCamperUrl}
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      className="p-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
+                    >
+                      <span>TUI Camper (Wohnmobile & Camper)</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 2. Flight, Hotel, Package & Rental Car Providers */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
+                    Flüge, Hotels, Pauschalreisen & Mietwagen (nach Tiefpreis sortiert)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <a
                       href={modalLinks.expediaPackageUrl}
                       target="_blank"
                       rel="sponsored noopener noreferrer"
                       className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>Expedia ({selectedHotelObj.name} & Kombi)</span>
+                      <span>Expedia (Günstigste Hotels zuerst)</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                     <a
-                      href={modalLinks.snowTrexUrl}
+                      href={modalLinks.check24HolidayUrl}
                       target="_blank"
                       rel="sponsored noopener noreferrer"
                       className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>ASI Reisen (Wander-, Trekking- & Skiwanderreisen)</span>
+                      <span className="truncate pr-2">CHECK24 Pauschalreisen & Hotels</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                     <a
-                      href={modalLinks.campingInfoUrl}
+                      href={modalLinks.abInDenUrlaubUrl}
                       target="_blank"
                       rel="sponsored noopener noreferrer"
                       className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>camping.info (Campingplätze & Glamping)</span>
+                      <span>Ab in den Urlaub (Pauschal & Deals)</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                     <a
-                      href={modalLinks.klookActivitiesUrl}
+                      href={modalLinks.tripComUrl}
                       target="_blank"
                       rel="sponsored noopener noreferrer"
                       className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>Klook (Touren, Tickets & Transfers)</span>
+                      <span>Trip.com (Flug- & Kombi-Suche)</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                    <a
+                      href={modalLinks.expediaFlightUrl}
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
+                    >
+                      <span>Expedia Flugsuche ({activeDestCalc.chosenRoute.outbound.originCode} ⇄ {activeDestCalc.chosenRoute.outbound.destCode})</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                     <a
@@ -2368,24 +2637,6 @@ export default function App() {
                       <span>DiscoverCars Mietwagen ({activeDestCalc.chosenRoute.outbound.destCode})</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
-                    <a
-                      href={modalLinks.tuiCamperUrl}
-                      target="_blank"
-                      rel="sponsored noopener noreferrer"
-                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
-                    >
-                      <span>TUI Camper (Wohnmobile & Camper)</span>
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    </a>
-                    <a
-                      href={modalLinks.camperDaysUrl}
-                      target="_blank"
-                      rel="sponsored noopener noreferrer"
-                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
-                    >
-                      <span>CamperDays (Wohnmobil-Preisvergleich)</span>
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    </a>
                   </div>
                 </div>
 
@@ -2393,7 +2644,7 @@ export default function App() {
                   <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <span>
                     Alle Links übergeben automatisch Ihr gewähltes Reisedatum ({selectedDateStr} bis{' '}
-                    {modalLinks.returnDateStr}), {travelers} Reisende und Ihre Währung ({userCurrency}).
+                    {modalLinks.returnDateStr}) und sortieren beim Partner nach dem günstigsten verfügbaren Live-Tarif.
                   </span>
                 </p>
 

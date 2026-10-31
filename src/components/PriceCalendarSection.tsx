@@ -1,10 +1,12 @@
 import React from 'react';
-import { Calendar, TrendingDown } from 'lucide-react';
+import { Calendar, TrendingDown, ExternalLink } from 'lucide-react';
 import {
   DailyPricePoint,
   DestinationDeal,
   UserCurrencyCode,
   formatMoney,
+  buildProviderBookingLinks,
+  AffiliatePartnerConfig,
 } from '../data/travelData';
 
 interface PriceCalendarSectionProps {
@@ -19,6 +21,9 @@ interface PriceCalendarSectionProps {
   includeSplitTickets: boolean;
   originCode: string;
   userCurrency: UserCurrencyCode;
+  travelers?: number;
+  affiliateConfig?: AffiliatePartnerConfig;
+  isCampingMode?: boolean;
 }
 
 const MONTH_LABELS: Record<string, string> = {
@@ -38,7 +43,11 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
   luggageFeePerPerson,
   includeNearbyAirports,
   includeSplitTickets,
+  originCode,
   userCurrency,
+  travelers = 2,
+  affiliateConfig,
+  isCampingMode = false,
 }) => {
   const days: DailyPricePoint[] = destination.monthlyCalendar[selectedMonth] || [];
 
@@ -47,6 +56,11 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
     includeNearbyAirports ? 0.76 : includeSplitTickets ? 0.85 : 1.0;
 
   const computeTotalPerPerson = (day: DailyPricePoint) => {
+    if (isCampingMode) {
+      // Realistic camping pitch / nature trip orientation per person for durationNights
+      const basePitchPerPersonPerNight = Math.max(12, Math.round(day.hotelPerNight * 0.28));
+      return basePitchPerPersonPerNight * durationNights;
+    }
     const optimizedFlight = Math.round(day.flightPrice * discountMultiplier) + luggageFeePerPerson;
     const hotelSharePerPerson = Math.round((day.hotelPerNight * durationNights) / 2);
     return optimizedFlight + hotelSharePerPerson;
@@ -65,6 +79,20 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
   const selectedDayObj = days.find((d) => d.dateStr === selectedDateStr) || days[0];
   const selectedTotal = selectedDayObj ? computeTotalPerPerson(selectedDayObj) : minTotal;
 
+  const calendarLinks = buildProviderBookingLinks({
+    originCode,
+    destCode: destination.iata,
+    destCity: destination.city,
+    hotelName: destination.city,
+    carrierName: 'Lufthansa',
+    departureDateStr: selectedDayObj?.dateStr || selectedDateStr,
+    durationNights,
+    travelers,
+    userCurrency,
+    affiliateConfig,
+    travelMode: isCampingMode ? 'camping_nature' : 'standard',
+  });
+
   return (
     <section id="preiskalender" className="py-12 border-t border-slate-200">
       <div className="max-w-[1280px] mx-auto px-6">
@@ -74,12 +102,14 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
               02. Flexibler Tiefpreis-Kalender <span aria-hidden="true">·</span> {destination.city} ({destination.iata}) <span aria-hidden="true">·</span> Währung: {userCurrency}
             </p>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mt-1 text-balance">
-              Taggenaue Gesamtreisekosten für {durationNights} Nächte inklusive Unterkunft
+              {isCampingMode
+                ? `Günstigste Anreisetage für ${durationNights} Nächte Camping-, Camper- & Natururlaub finden`
+                : `Günstigste Anreisetage für ${durationNights} Nächte finden (Richtwerte inkl. Flug & Unterkunft)`}
             </h2>
           </div>
 
           {/* Interactive Month Segmented Selector */}
-          <div className="flex items-center gap-1 p-1 bg-slate-200/70 rounded-lg self-start">
+          <div className="flex items-center gap-1 p-1 bg-slate-200/70 rounded-lg self-start overflow-x-auto">
             {Object.keys(MONTH_LABELS).map((mKey) => (
               <button
                 key={mKey}
@@ -101,12 +131,14 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
           {/* Calendar Heatmap Grid (8 cols) */}
           <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl p-5">
             <div className="flex flex-wrap items-center justify-between gap-4 pb-4 mb-4 border-b border-slate-100 text-xs text-slate-600">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <span className="font-semibold text-slate-900">
-                  Preisstufen (Flug + {durationNights} Nächte Hotel p.P.):
+                  {isCampingMode
+                    ? `Richtwerte (${durationNights} Nächte Stellplatz/Unterkunft p.P.):`
+                    : `Richtwerte (Flug + ${durationNights} Nächte p.P.):`}
                 </span>
-                <span className="text-emerald-700 font-medium">
-                  Tiefstpreis ab {formatMoney(minTotal, userCurrency)}
+                <span className="text-emerald-700 font-semibold">
+                  Günstigster Tag ab {formatMoney(minTotal, userCurrency)}
                 </span>
                 <span aria-hidden="true">·</span>
                 <span>Monatsmittel {formatMoney(avgTotal, userCurrency)}</span>
@@ -114,16 +146,16 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
                 <span className="text-slate-500">Spitzenwert {formatMoney(maxTotal, userCurrency)}</span>
               </div>
               <span className="text-slate-500">
-                Klicken Sie auf ein Abflugdatum zur Routenberechnung
+                Klick auf einen Tag übernimmt das Datum in den Tiefpreis-Vergleich
               </span>
             </div>
 
             {/* Weekday Header */}
             <div className="grid grid-cols-7 gap-1.5 mb-2 text-center text-xs font-semibold text-slate-500">
               <div>Mo</div>
-              <div>Di (Spar-Tag)</div>
-              <div>Mi (Spar-Tag)</div>
-              <div>Do</div>
+              <div className="text-emerald-700">Di (Spar-Tag)</div>
+              <div className="text-emerald-700">Mi (Spar-Tag)</div>
+              <div className="text-emerald-700">Do (Spar-Tag)</div>
               <div>Fr</div>
               <div>Sa</div>
               <div>So</div>
@@ -138,8 +170,8 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
               {days.map((day) => {
                 const total = computeTotalPerPerson(day);
                 const isSelected = day.dateStr === selectedDayObj?.dateStr;
-                const isBestDeal = total <= minTotal + 12;
-                const isAboveAvg = total > avgTotal + 25;
+                const isBestDeal = total <= minTotal + (isCampingMode ? 5 : 12);
+                const isAboveAvg = total > avgTotal + (isCampingMode ? 10 : 25);
 
                 return (
                   <button
@@ -166,7 +198,7 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
                       </span>
                       {isBestDeal && !isSelected && (
                         <span className="text-[10px] font-semibold text-emerald-700">
-                          Tiefpreis
+                          Spartag
                         </span>
                       )}
                     </div>
@@ -181,7 +213,7 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
                             : 'text-slate-900'
                         }`}
                       >
-                        {formatMoney(total, userCurrency)}
+                        ab {formatMoney(total, userCurrency)}
                       </span>
                     </div>
                   </button>
@@ -190,12 +222,12 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Selected Date Deep Breakdown & 30-Day Trend (4 cols) */}
+          {/* Right Column: Selected Date Deep Breakdown & Direct Lowest-Price Check (4 cols) */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-white border border-slate-200 rounded-xl p-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                 <div>
-                  <span className="text-xs text-slate-500 block">Gewähltes Abflugdatum</span>
+                  <span className="text-xs text-slate-500 block">Gewähltes Anreisedatum</span>
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 mt-0.5">
                     <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
                     <span>
@@ -205,51 +237,120 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
                   </h3>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-slate-500 block">Gesamt p.P.</span>
+                  <span className="text-xs text-slate-500 block">Richtwert p.P.</span>
                   <span className="text-xl font-mono font-bold text-emerald-700 tabular-nums">
-                    {formatMoney(selectedTotal, userCurrency)}
+                    ab {formatMoney(selectedTotal, userCurrency)}
                   </span>
                 </div>
               </div>
 
               {selectedDayObj && (
-                <div className="space-y-2.5 text-sm">
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>Hin- & Rückflug (Optimierter Tarif)</span>
-                    <span className="font-mono font-medium text-slate-900 tabular-nums">
-                      {formatMoney(Math.round(selectedDayObj.flightPrice * discountMultiplier), userCurrency)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>Gepäckzuschlag (gewählte Option)</span>
-                    <span className="font-mono font-medium text-slate-900 tabular-nums">
-                      {formatMoney(luggageFeePerPerson, userCurrency)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>
-                      Unterkunft ({durationNights} Nächte · Anteil p.P.)
-                    </span>
-                    <span className="font-mono font-medium text-slate-900 tabular-nums">
-                      {formatMoney(Math.round((selectedDayObj.hotelPerNight * durationNights) / 2), userCurrency)}
-                    </span>
-                  </div>
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-emerald-700 font-medium">
-                    <span>Ersparnis gegenüber Monats-Spitze</span>
+                <div className="space-y-2 text-xs">
+                  {isCampingMode ? (
+                    <>
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span>Stellplatz / Camping ({durationNights} Nächte p.P.)</span>
+                        <span className="font-mono font-medium text-slate-900 tabular-nums">
+                          ab {formatMoney(selectedTotal, userCurrency)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span>Reisezeitraum:</span>
+                        <span className="font-mono font-medium text-slate-900">
+                          {selectedDayObj.dateStr} bis {calendarLinks.returnDateStr}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span>Hin- & Rückflug (Richtwert)</span>
+                        <span className="font-mono font-medium text-slate-900 tabular-nums">
+                          ab {formatMoney(Math.round(selectedDayObj.flightPrice * discountMultiplier), userCurrency)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span>
+                          Günstigste 3★–4★ Unterkunft ({durationNights} Nächte p.P.)
+                        </span>
+                        <span className="font-mono font-medium text-slate-900 tabular-nums">
+                          ab {formatMoney(Math.round((selectedDayObj.hotelPerNight * durationNights) / 2), userCurrency)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-emerald-700 font-medium">
+                    <span>Vorteil gegenüber Monats-Spitze</span>
                     <span className="font-mono font-semibold tabular-nums">
-                      {formatMoney(Math.max(0, maxTotal - selectedTotal), userCurrency, { showMinus: true })} pro Person
+                      {formatMoney(Math.max(0, maxTotal - selectedTotal), userCurrency, { showMinus: true })} p.P.
                     </span>
                   </div>
                 </div>
               )}
 
-              <div className="mt-5 pt-4 border-t border-slate-100">
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  <strong className="text-slate-800">Wochentags-Regel:</strong> Abflüge am{' '}
-                  {destination.cheapestWeekday} sind auf dieser Strecke im Schnitt{' '}
-                  <span className="font-mono text-slate-800 tabular-nums">24 %</span> günstiger als
-                  Freitags- oder Samstagsflüge.
-                </p>
+              {/* Direct Lowest-Price Live Action Buttons */}
+              <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                {isCampingMode ? (
+                  <>
+                    <a
+                      href={calendarLinks.campingInfoUrl}
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <span>Günstigste Campingplätze bei camping.info</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <a
+                        href={calendarLinks.snowTrexUrl}
+                        target="_blank"
+                        rel="sponsored noopener noreferrer"
+                        className="py-1.5 px-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-semibold rounded-md text-center transition-colors"
+                      >
+                        ASI Wanderreisen
+                      </a>
+                      <a
+                        href={calendarLinks.camperDaysUrl}
+                        target="_blank"
+                        rel="sponsored noopener noreferrer"
+                        className="py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-md text-center transition-colors"
+                      >
+                        CamperDays
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <a
+                      href={calendarLinks.expediaPackageUrl}
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <span>Günstigste Hotels ({selectedDayObj?.dateStr}) bei Expedia</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <a
+                        href={calendarLinks.check24HolidayUrl}
+                        target="_blank"
+                        rel="sponsored noopener noreferrer"
+                        className="py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-md text-center transition-colors"
+                      >
+                        CHECK24 Tiefpreis
+                      </a>
+                      <a
+                        href={calendarLinks.tripComUrl}
+                        target="_blank"
+                        rel="sponsored noopener noreferrer"
+                        className="py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold rounded-md text-center transition-colors"
+                      >
+                        Trip.com Flüge
+                      </a>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -261,7 +362,7 @@ export const PriceCalendarSection: React.FC<PriceCalendarSectionProps> = ({
                   <span>Preisentwicklung (letzte 30 Tage)</span>
                 </h4>
                 <span className="text-xs font-mono text-emerald-700 font-semibold tabular-nums">
-                  Buchungsfenster optimal
+                  Günstiges Buchungsfenster
                 </span>
               </div>
 

@@ -402,7 +402,7 @@ export const DEFAULT_AFFILIATE_CONFIG: AffiliatePartnerConfig = {
   customDiscoverCarsUrl: 'https://www.discovercars.com/de?a_aid=CleverEntdeckt&a_bid=61a4ac81', // User's official DiscoverCars Affiliate Link pre-configured
   customCheck24Url: '1176801', // User's official Check24 Partner/Widget ID 1176801 pre-configured
   customBookingUrl: '',
-  customSkyscannerUrl: '',
+  customSkyscannerUrl: 'https://www.aviasales.com/?marker=771810', // User's official Aviasales Flight Metasearch via Travelpayouts Marker 771810
   customAbInDenUrlaubUrl: 'https://www.awin1.com/cread.php?s=2307983&v=9369&q=339342&r=3034525', // User's official Ab in den Urlaub Awin Link pre-configured
   customTripComUrl: 'https://de.trip.com/?Allianceid=10486295&SID=330669011&locale=de_de', // User's official Trip.com Affiliate Link (Allianceid=10486295, SID=330669011) pre-configured
   customSnowTrexUrl: 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525', // User's official ASI Reisen Berg- & Aktivreisen Awin Link pre-configured
@@ -455,6 +455,9 @@ export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
         customSnowTrexUrl: parsed?.customSnowTrexUrl?.trim()
           ? parsed.customSnowTrexUrl
           : 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525',
+        customSkyscannerUrl: parsed?.customSkyscannerUrl?.trim()
+          ? parsed.customSkyscannerUrl
+          : 'https://www.aviasales.com/?marker=771810',
         extraPartners: mergedExtras,
       };
     }
@@ -561,10 +564,9 @@ function resolveCustomAffiliateUrl(
     const parsedCustom = new URL(normalizedUrl);
     const parsedDefault = new URL(defaultDeepUrl);
 
-    // Case 2a: Awin cread.php wrapper: only attach ued when awinmid is used (deep-link format), never overwrite banner creatives (s=...&v=9369&q=...)
+    // Case 2a: Awin cread.php wrapper: only attach/update ued when awinmid is used (deep-link format), never overwrite banner creatives (s=...&v=9369&q=...)
     if (
       parsedCustom.hostname.includes('awin1.com') &&
-      !parsedCustom.searchParams.has('ued') &&
       !defaultDeepUrl.includes('awin1.com')
     ) {
       if (parsedCustom.searchParams.has('awinmid')) {
@@ -676,18 +678,19 @@ export function buildProviderBookingLinks(params: {
   travelers: number;
   userCurrency: UserCurrencyCode;
   affiliateConfig?: AffiliatePartnerConfig;
+  travelMode?: 'standard' | 'camping_nature' | 'hiking' | 'camper';
 }): ProviderBookingLinks {
   const {
     originCode,
     destCode,
     destCity,
-    hotelName,
     carrierName,
     departureDateStr,
     durationNights,
     travelers,
     userCurrency,
     affiliateConfig,
+    travelMode = 'standard',
   } = params;
 
   const aff = affiliateConfig || getSavedAffiliateConfig();
@@ -744,7 +747,7 @@ export function buildProviderBookingLinks(params: {
   const expediaLeg1 = `from:${originCode},to:${destCode},departure:${deOutDate}TANYT`;
   const expediaLeg2 = `from:${destCode},to:${originCode},departure:${deInDate}TANYT`;
   const expediaPassengers = `children:0,adults:${travelers},seniors:0,infantinlap:Y`;
-  const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?flight-type=on&mode=search&trip=roundtrip&leg1=${encodeURIComponent(expediaLeg1)}&leg2=${encodeURIComponent(expediaLeg2)}&fromDate=${encodeURIComponent(deOutDate)}&toDate=${encodeURIComponent(deInDate)}&d1=${departureDateStr}&d2=${returnDateStr}&passengers=${encodeURIComponent(expediaPassengers)}&options=${encodeURIComponent('cabinclass:economy')}&siteid=6&langid=1031`;
+  const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?flight-type=on&mode=search&trip=roundtrip&leg1=${encodeURIComponent(expediaLeg1)}&leg2=${encodeURIComponent(expediaLeg2)}&fromDate=${encodeURIComponent(deOutDate)}&toDate=${encodeURIComponent(deInDate)}&d1=${departureDateStr}&d2=${returnDateStr}&passengers=${encodeURIComponent(expediaPassengers)}&options=${encodeURIComponent('cabinclass:economy,sortby:price')}&siteid=6&langid=1031`;
   const expediaFlightUrl = resolveCustomAffiliateUrl(
     aff.customExpediaUrl,
     baseExpediaFlightUrl,
@@ -763,7 +766,8 @@ export function buildProviderBookingLinks(params: {
   );
 
   const baseSkyscannerUrl = `https://www.skyscanner.de/transport/fluge/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${skyOut}/${skyIn}/?adultsv2=${travelers}&cabinclass=economy&currency=${userCurrency}`;
-  const baseAviasalesUrl = `https://www.aviasales.com/search/${originCode.toUpperCase()}${aviaOut}${destCode.toUpperCase()}${aviaIn}${travelers}?currency=${userCurrency.toLowerCase()}${marker ? `&marker=${encodeURIComponent(marker)}` : ''}`;
+  const activeTpMarker = marker || '771810';
+  const baseAviasalesUrl = `https://www.aviasales.com/search/${originCode.toUpperCase()}${aviaOut}${destCode.toUpperCase()}${aviaIn}${travelers}?currency=${userCurrency.toLowerCase()}&marker=${encodeURIComponent(activeTpMarker)}`;
   const baseKiwiFlightUrl = `https://www.kiwi.com/de/search/results/${originCode.toLowerCase()}-${destCode.toLowerCase()}/${departureDateStr}/${returnDateStr}?adults=${travelers}`;
 
   const customFlightInput = (aff.customSkyscannerUrl || '').trim();
@@ -784,18 +788,16 @@ export function buildProviderBookingLinks(params: {
           : 'skyscanner',
         'marker'
       )
-    : hasDirectTripCom
-    ? tripComUrl
-    : expediaFlightUrl;
+    : baseAviasalesUrl;
 
-  // Map secondary flight links directly to the user's real flight partners (Expedia & Trip.com)
+  // Map secondary flight links directly to the user's real flight partners (Expedia, Trip.com & Aviasales)
   const kayakFlightUrl = expediaFlightUrl;
   const googleFlightsUrl = tripComUrl;
-  const airlineDirectUrl = tripComUrl;
+  const airlineDirectUrl = skyscannerFlightUrl;
 
-  // 5. Expedia Official German Hotel & Stays Search (with d1, d2, startDate, endDate, rooms, adults, siteid=6, langid=1031)
+  // 5. Expedia Official German Hotel & Stays Search — pre-sorted by LOWEST PRICE FIRST (sort=PRICE_LOW_TO_HIGH)
   const hasDirectExpedia = Boolean(aff.customExpediaUrl?.trim());
-  const baseExpediaUrl = `https://www.expedia.de/Hotel-Search?destination=${encodeURIComponent(cleanCity)}&startDate=${departureDateStr}&endDate=${returnDateStr}&d1=${departureDateStr}&d2=${returnDateStr}&rooms=${rooms}&adults=${travelers}&siteid=6&langid=1031${hasDirectExpedia ? '' : markerSuffix}`;
+  const baseExpediaUrl = `https://www.expedia.de/Hotel-Search?destination=${encodeURIComponent(cleanCity)}&startDate=${departureDateStr}&endDate=${returnDateStr}&d1=${departureDateStr}&d2=${returnDateStr}&rooms=${rooms}&adults=${travelers}&sort=PRICE_LOW_TO_HIGH&siteid=6&langid=1031${hasDirectExpedia ? '' : markerSuffix}`;
   const expediaPackageUrl = resolveCustomAffiliateUrl(
     aff.customExpediaUrl,
     baseExpediaUrl,
@@ -806,7 +808,7 @@ export function buildProviderBookingLinks(params: {
   // 6. Booking.com (Only if user explicitly configured a Booking.com link/AID; otherwise falls back to Expedia Hotel partner link)
   const bookingSearchQuery = encodeURIComponent(`${cleanCity}`);
   const hasDirectBooking = Boolean(aff.customBookingUrl?.trim() || aid);
-  const baseBookingHotelUrl = `https://www.booking.com/searchresults.de.html?ss=${bookingSearchQuery}&checkin=${departureDateStr}&checkout=${returnDateStr}&group_adults=${travelers}&no_rooms=${rooms}&selected_currency=${userCurrency}${aidSuffix}`;
+  const baseBookingHotelUrl = `https://www.booking.com/searchresults.de.html?ss=${bookingSearchQuery}&checkin=${departureDateStr}&checkout=${returnDateStr}&group_adults=${travelers}&no_rooms=${rooms}&order=price&selected_currency=${userCurrency}${aidSuffix}`;
   const bookingHotelUrl = hasDirectBooking
     ? resolveCustomAffiliateUrl(aff.customBookingUrl, baseBookingHotelUrl, 'booking.com', 'aid')
     : expediaPackageUrl;
@@ -833,7 +835,7 @@ export function buildProviderBookingLinks(params: {
     'partnerid'
   );
 
-  // 8c. ASI Reisen (Rund-, Berg- & Aktivreisen via Awin v=126961)
+  // 8c. ASI Reisen (Wander-, Trekking-, Berg- & Naturreisen via Awin v=126961)
   const hasDirectSnowTrex = Boolean(aff.customSnowTrexUrl?.trim());
   const baseSnowTrexUrl = `https://www.asi-reisen.de/`;
   const snowTrexUrl = resolveCustomAffiliateUrl(
@@ -855,6 +857,7 @@ export function buildProviderBookingLinks(params: {
     'discovercars',
     'a_aid'
   );
+
   // 10b. TUI Camper (Wohnmobile & Camper weltweit mieten via Awin awinmid=11934 & awinaffid=3034525)
   const tuiCamperPartnerEntry = activeExtraPartners.find((p) =>
     p.url.toLowerCase().includes('tuicamper') || p.url.includes('11934')
@@ -867,7 +870,7 @@ export function buildProviderBookingLinks(params: {
     'awinaffid'
   );
 
-  // 10c. CamperDays (Wohnmobil-Preisvergleich via Awin awinmid=52889 & awinaffid=3034525, cleaned of Bing utm params)
+  // 10c. CamperDays (Wohnmobil-Preisvergleich via Awin awinmid=52889 & awinaffid=3034525)
   const camperDaysPartnerEntry = activeExtraPartners.find((p) =>
     p.url.toLowerCase().includes('camperdays') || p.url.includes('52889')
   );
@@ -879,14 +882,42 @@ export function buildProviderBookingLinks(params: {
     'awinaffid'
   );
 
-  // 10d. camping.info (Campingplätze, Stellplätze & Glamping via Awin awinmid=44063 & awinaffid=3034525)
+  // 10d. camping.info (Campingplätze, Stellplätze & Glamping via Awin awinmid=44063 & awinaffid=3034525 — matched to destination country)
   const campingInfoPartnerEntry = activeExtraPartners.find((p) =>
     p.url.toLowerCase().includes('camping.info') || p.url.includes('44063')
   );
+  const codeUpper = destCode.toUpperCase();
+  const cityLower = destCity.toLowerCase();
+  const campingCountrySlug =
+    ['PMI', 'BCN', 'TFS', 'AGP', 'MAD', 'ALC', 'LPA'].includes(codeUpper) || cityLower.includes('spanien') || cityLower.includes('mallorca') || cityLower.includes('barcelona') || cityLower.includes('teneriffa')
+      ? 'spanien'
+      : ['FCO', 'MXP', 'BGY', 'NAP', 'CTA', 'VCE', 'BLQ'].includes(codeUpper) || cityLower.includes('italien') || cityLower.includes('rom') || cityLower.includes('comer') || cityLower.includes('amalfi') || cityLower.includes('sizilien') || cityLower.includes('gardasee')
+      ? 'italien'
+      : ['AYT', 'SAW', 'IST', 'ADB', 'BJV'].includes(codeUpper) || cityLower.includes('türkei') || cityLower.includes('antalya') || cityLower.includes('bodrum')
+      ? 'tuerkei'
+      : ['SPU', 'DBV', 'ZAD', 'PUY'].includes(codeUpper) || cityLower.includes('kroatien') || cityLower.includes('split') || cityLower.includes('istrien')
+      ? 'kroatien'
+      : ['ATH', 'HER', 'RHO', 'SKG'].includes(codeUpper) || cityLower.includes('griechenland') || cityLower.includes('athen') || cityLower.includes('kreta')
+      ? 'griechenland'
+      : ['LIS', 'OPO', 'FAO'].includes(codeUpper) || cityLower.includes('portugal') || cityLower.includes('lissabon') || cityLower.includes('porto')
+      ? 'portugal'
+      : ['KRK', 'WAW', 'GDN'].includes(codeUpper) || cityLower.includes('polen') || cityLower.includes('krakau') || cityLower.includes('tatra')
+      ? 'polen'
+      : ['BUD'].includes(codeUpper) || cityLower.includes('ungarn') || cityLower.includes('budapest')
+      ? 'ungarn'
+      : ['INN', 'SZG', 'VIE', 'KLU'].includes(codeUpper) || cityLower.includes('österreich') || cityLower.includes('tirol')
+      ? 'oesterreich'
+      : ['ZRH', 'GVA', 'BSL'].includes(codeUpper) || cityLower.includes('schweiz')
+      ? 'schweiz'
+      : cityLower.includes('frankreich') || cityLower.includes('korsika')
+      ? 'frankreich'
+      : 'deutschland';
+  const targetCampingInfoUrl = `https://www.camping.info/de/land/${campingCountrySlug}`;
+
   const campingInfoUrl = resolveCustomAffiliateUrl(
     campingInfoPartnerEntry?.url ||
       'https://www.awin1.com/cread.php?awinmid=44063&awinaffid=3034525&ued=https%3A%2F%2Fwww.camping.info%2Fde%2Fland%2Fdeutschland',
-    'https://www.camping.info/de/land/deutschland',
+    targetCampingInfoUrl,
     'camping.info',
     'awinaffid'
   );
@@ -895,121 +926,158 @@ export function buildProviderBookingLinks(params: {
   const flightCompensationUrl = tuiCamperUrl;
 
   // 11. Smart Single-Button Best-Price Router ("1 Button zum günstigsten Anbieter inkl. aktivem Affiliate-Link")
-  // Strictly uses ONLY the user's real affiliate partners
+  // Strictly uses ONLY the user's real affiliate partners and routes Camping/Wandern/Camper directly to the specialist partner!
   const citySeed = cleanCity
     .split('')
     .reduce((acc, ch, idx) => acc + ch.charCodeAt(0) * (idx + 1), 0);
-  const isBeachHolidayDest = ['PMI', 'AYT', 'HRG', 'RAK', 'LPA', 'SPU', 'RHO', 'HER', 'FAO'].includes(
-    destCode.toUpperCase()
+  const isBeachHolidayDest = ['PMI', 'AYT', 'HRG', 'RAK', 'LPA', 'SPU', 'RHO', 'HER', 'FAO', 'TFS', 'AGP', 'BJV', 'CTA'].includes(
+    codeUpper
   );
-  const isLongHaulOrCityDest = ['BKK', 'JFK', 'DXB', 'LIS', 'BUD', 'KRK', 'SAW', 'ATH', 'BCN', 'ROM'].includes(
-    destCode.toUpperCase()
+  const isLongHaulOrCityDest = ['BKK', 'JFK', 'DXB', 'LIS', 'BUD', 'KRK', 'SAW', 'ATH', 'BCN', 'FCO', 'NAP'].includes(
+    codeUpper
   );
-  const cityLower = destCity.toLowerCase();
-  const isWinterOrMountainDest =
-    ['INN', 'SZG', 'ZRH', 'GVA', 'TAT', 'KLU', 'BGY', 'TRN'].includes(destCode.toUpperCase()) ||
-    cityLower.includes('tirol') ||
-    cityLower.includes('alpen') ||
-    cityLower.includes('tatra') ||
-    cityLower.includes('ski') ||
-    cityLower.includes('innsbruck') ||
-    cityLower.includes('salzburg');
 
-  const candidateOffers: {
+  const isExplicitHikingSearch =
+    travelMode === 'hiking' ||
+    cityLower.includes('wander') ||
+    cityLower.includes('trekking') ||
+    cityLower.includes('berg') ||
+    cityLower.includes('tatra') ||
+    cityLower.includes('alpen') ||
+    cityLower.includes('tirol') ||
+    cityLower.includes('ski');
+
+  const isExplicitCamperSearch =
+    travelMode === 'camper' ||
+    cityLower.includes('wohnmobil') ||
+    cityLower.includes('camper') ||
+    cityLower.includes('kastenwagen');
+
+  const isCampingOrNatureMode =
+    travelMode === 'camping_nature' ||
+    isExplicitHikingSearch ||
+    isExplicitCamperSearch ||
+    cityLower.includes('camping') ||
+    cityLower.includes('stellplatz') ||
+    cityLower.includes('mobilheim') ||
+    cityLower.includes('glamping') ||
+    cityLower.includes('natur');
+
+  let candidateOffers: {
     id: string;
     providerShortName: string;
     name: string;
     url: string;
     hasActiveAffiliate: boolean;
     rawRankScore: number;
-  }[] = [
-    {
-      id: 'expedia',
-      providerShortName: 'Expedia',
-      name: 'Expedia Bestpreis',
-      url: expediaPackageUrl,
-      hasActiveAffiliate: hasDirectExpedia,
-      rawRankScore: isLongHaulOrCityDest ? 1 : isBeachHolidayDest ? 2 : (citySeed % 3) + 1,
-    },
-    {
-      id: 'check24',
-      providerShortName: 'CHECK24',
-      name: 'CHECK24 Tiefpreis',
-      url: check24HolidayUrl,
-      hasActiveAffiliate: hasDirectCheck24,
-      rawRankScore: isBeachHolidayDest ? 1 : isLongHaulOrCityDest ? 2 : ((citySeed + 1) % 3) + 1,
-    },
-    {
-      id: 'abindenurlaub',
-      providerShortName: 'Ab in den Urlaub',
-      name: 'Ab in den Urlaub Deal',
-      url: abInDenUrlaubUrl,
-      hasActiveAffiliate: hasDirectAbInDenUrlaub,
-      rawRankScore: isBeachHolidayDest ? 1 : ((citySeed + 2) % 3) + 1,
-    },
-    {
-      id: 'tripcom',
-      providerShortName: 'Trip.com',
-      name: 'Trip.com Kombi-Deal',
-      url: tripComUrl,
-      hasActiveAffiliate: hasDirectTripCom,
-      rawRankScore: isLongHaulOrCityDest ? 1 : ((citySeed + 1) % 3) + 1,
-    },
-    {
-      id: 'asireisen',
-      providerShortName: 'ASI Reisen',
-      name: 'ASI Reisen Aktiv-Deal',
-      url: snowTrexUrl,
-      hasActiveAffiliate: hasDirectSnowTrex,
-      rawRankScore: isWinterOrMountainDest ? 0 : 2,
-    },
-  ];
+  }[];
 
-  if (hasDirectBooking) {
-    candidateOffers.push({
-      id: 'booking',
-      providerShortName: 'Booking.com',
-      name: 'Booking.com Sparpreis',
-      url: bookingHotelUrl,
-      hasActiveAffiliate: true,
-      rawRankScore: 2,
-    });
+  if (isCampingOrNatureMode) {
+    // When user wants Camping, Hiking, or Camper, NEVER route primary winner to Expedia!
+    candidateOffers = [
+      {
+        id: 'campinginfo',
+        providerShortName: 'camping.info',
+        name: 'camping.info Tiefpreis',
+        url: campingInfoUrl,
+        hasActiveAffiliate: true,
+        rawRankScore: isExplicitHikingSearch ? 2 : isExplicitCamperSearch ? 3 : 0,
+      },
+      {
+        id: 'asireisen',
+        providerShortName: 'ASI Reisen',
+        name: 'ASI Reisen (Wandern & Natur)',
+        url: snowTrexUrl,
+        hasActiveAffiliate: true,
+        rawRankScore: isExplicitHikingSearch ? 0 : 1,
+      },
+      {
+        id: 'camperdays',
+        providerShortName: 'CamperDays',
+        name: 'CamperDays Preisvergleich',
+        url: camperDaysUrl,
+        hasActiveAffiliate: true,
+        rawRankScore: isExplicitCamperSearch ? 0 : 2,
+      },
+      {
+        id: 'tuicamper',
+        providerShortName: 'TUI Camper',
+        name: 'TUI Camper Bestpreis',
+        url: tuiCamperUrl,
+        hasActiveAffiliate: true,
+        rawRankScore: isExplicitCamperSearch ? 1 : 3,
+      },
+    ];
+  } else {
+    candidateOffers = [
+      {
+        id: 'expedia',
+        providerShortName: 'Expedia',
+        name: 'Expedia Tiefpreis',
+        url: expediaPackageUrl,
+        hasActiveAffiliate: hasDirectExpedia,
+        rawRankScore: isLongHaulOrCityDest ? 1 : isBeachHolidayDest ? 2 : (citySeed % 3) + 1,
+      },
+      {
+        id: 'check24',
+        providerShortName: 'CHECK24',
+        name: 'CHECK24 Tiefpreis',
+        url: check24HolidayUrl,
+        hasActiveAffiliate: hasDirectCheck24,
+        rawRankScore: isBeachHolidayDest ? 1 : isLongHaulOrCityDest ? 2 : ((citySeed + 1) % 3) + 1,
+      },
+      {
+        id: 'abindenurlaub',
+        providerShortName: 'Ab in den Urlaub',
+        name: 'Ab in den Urlaub Deal',
+        url: abInDenUrlaubUrl,
+        hasActiveAffiliate: hasDirectAbInDenUrlaub,
+        rawRankScore: isBeachHolidayDest ? 1 : ((citySeed + 2) % 3) + 1,
+      },
+      {
+        id: 'tripcom',
+        providerShortName: 'Trip.com',
+        name: 'Trip.com Tiefpreis',
+        url: tripComUrl,
+        hasActiveAffiliate: hasDirectTripCom,
+        rawRankScore: isLongHaulOrCityDest ? 1 : ((citySeed + 1) % 3) + 1,
+      },
+      {
+        id: 'asireisen',
+        providerShortName: 'ASI Reisen',
+        name: 'ASI Reisen Aktiv-Deal',
+        url: snowTrexUrl,
+        hasActiveAffiliate: hasDirectSnowTrex,
+        rawRankScore: 3,
+      },
+    ];
+
+    if (hasDirectBooking) {
+      candidateOffers.push({
+        id: 'booking',
+        providerShortName: 'Booking.com',
+        name: 'Booking.com Sparpreis',
+        url: bookingHotelUrl,
+        hasActiveAffiliate: true,
+        rawRankScore: 2,
+      });
+    }
+
+    if (customFlightInput || activeTpMarker) {
+      candidateOffers.push({
+        id: 'aviasales',
+        providerShortName: customFlightInput.toLowerCase().includes('skyscanner')
+          ? 'Skyscanner'
+          : customFlightInput.toLowerCase().includes('kiwi')
+          ? 'Kiwi.com'
+          : 'Aviasales Flüge',
+        name: 'Aviasales Flug-Metasuche',
+        url: skyscannerFlightUrl,
+        hasActiveAffiliate: true,
+        rawRankScore: isLongHaulOrCityDest ? 1 : 2,
+      });
+    }
   }
-
-  if (customFlightInput) {
-    candidateOffers.push({
-      id: 'flights',
-      providerShortName: 'Flug-Partner',
-      name: 'Flug-Direktvergleich',
-      url: skyscannerFlightUrl,
-      hasActiveAffiliate: true,
-      rawRankScore: 2,
-    });
-  }
-
-  // Include all user-added extra affiliate partners (e.g. Klook)
-  activeExtraPartners.forEach((partner, idx) => {
-    const pLower = `${partner.name} ${partner.url}`.toLowerCase();
-    const extraDeepDefault = pLower.includes('klook')
-      ? baseKlookSearchUrl
-      : pLower.includes('kiwi')
-      ? baseKiwiFlightUrl
-      : partner.url;
-    const resolvedExtraUrl = resolveCustomAffiliateUrl(
-      partner.url,
-      extraDeepDefault,
-      partner.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
-      'partnerid'
-    );
-    candidateOffers.push({
-      id: `extra-${partner.id || idx}`,
-      providerShortName: partner.name.trim(),
-      name: `${partner.name.trim()} Sparpreis`,
-      url: resolvedExtraUrl,
-      hasActiveAffiliate: true,
-      rawRankScore: partner.category === 'winter' && isWinterOrMountainDest ? 0 : ((citySeed + idx) % 3) + 1,
-    });
-  });
 
   // Strictly filter to the partners configured by the user
   const monetizedCandidates = candidateOffers.filter((c) => c.hasActiveAffiliate);

@@ -12,16 +12,14 @@ interface CurrencyConverterPanelProps {
   userCurrency: UserCurrencyCode;
   onChangeUserCurrency: (currency: UserCurrencyCode) => void;
   activeDestination: DestinationDeal;
-  tripTotalEurPerPerson: number;
-  travelers: number;
+  tripTotalEurPerPerson?: number;
+  travelers?: number;
 }
 
 export const CurrencyConverterPanel: React.FC<CurrencyConverterPanelProps> = ({
   userCurrency,
   onChangeUserCurrency,
   activeDestination,
-  tripTotalEurPerPerson,
-  travelers,
 }) => {
   const destLocalMeta =
     DESTINATION_LOCAL_CURRENCY[activeDestination.id] || {
@@ -30,9 +28,7 @@ export const CurrencyConverterPanel: React.FC<CurrencyConverterPanelProps> = ({
       fxSavingTip: 'Zahlen Sie vor Ort immer in der Landeswährung ohne dynamische Währungsumrechnung.',
     };
 
-  const [customAmount, setCustomAmount] = useState<string>(
-    String(Math.round(tripTotalEurPerPerson * SUPPORTED_CURRENCIES[userCurrency].rateFromEur))
-  );
+  const [customAmount, setCustomAmount] = useState<string>('100');
   const [fromCurrency, setFromCurrency] = useState<UserCurrencyCode>(userCurrency);
   const [toCurrency, setToCurrency] = useState<UserCurrencyCode>(
     destLocalMeta.code !== userCurrency ? destLocalMeta.code : 'EUR'
@@ -41,10 +37,6 @@ export const CurrencyConverterPanel: React.FC<CurrencyConverterPanelProps> = ({
   // Sync converter currencies when user changes home currency or destination
   useEffect(() => {
     setFromCurrency(userCurrency);
-    const convertedTrip = Math.round(
-      tripTotalEurPerPerson * SUPPORTED_CURRENCIES[userCurrency].rateFromEur
-    );
-    setCustomAmount(String(convertedTrip));
 
     if (destLocalMeta.code !== userCurrency) {
       setToCurrency(destLocalMeta.code);
@@ -53,7 +45,7 @@ export const CurrencyConverterPanel: React.FC<CurrencyConverterPanelProps> = ({
     } else {
       setToCurrency('CHF');
     }
-  }, [userCurrency, activeDestination.id, tripTotalEurPerPerson, destLocalMeta.code]);
+  }, [userCurrency, activeDestination.id, destLocalMeta.code]);
 
   const numericInput = Math.max(0, Number(customAmount) || 0);
   const fromRate = SUPPORTED_CURRENCIES[fromCurrency].rateFromEur;
@@ -63,9 +55,6 @@ export const CurrencyConverterPanel: React.FC<CurrencyConverterPanelProps> = ({
   const amountInEur = numericInput / (fromRate || 1);
   const convertedResult = amountInEur * toRate;
   const effectiveCrossRate = toRate / (fromRate || 1);
-
-  // Bank / Airport kiosk fee comparison (typical 5.5% DCC / spread loss)
-  const airportExchangeLossEur = Math.round(amountInEur * 0.055);
 
   const handleSwapCurrencies = () => {
     setFromCurrency(toCurrency);
@@ -77,12 +66,12 @@ export const CurrencyConverterPanel: React.FC<CurrencyConverterPanelProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
         <div>
           <span className="text-xs font-medium text-slate-500 block">
-            Währungsrechner & Wechselkurs-Optimierer <span aria-hidden="true">·</span> EZB-Referenzkurse
+            Währungsrechner & Urlaubskassen-Umrechner <span aria-hidden="true">·</span> EZB-Referenzkurse
           </span>
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 mt-0.5">
             <Calculator className="w-4 h-4 text-blue-600 shrink-0" />
             <span>
-              Heimatwährung ({userCurrency}) ⇄ Zielwährung in {activeDestination.city.split(' ')[0]} ({destLocalMeta.code})
+              Heimatwährung ({userCurrency}) ⇄ Landeswährung in {activeDestination.city.split(' ')[0]} ({destLocalMeta.code})
             </span>
           </h3>
         </div>
@@ -201,62 +190,41 @@ export const CurrencyConverterPanel: React.FC<CurrencyConverterPanelProps> = ({
               </strong>
             </span>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span>Schnellwahl:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setFromCurrency(userCurrency);
-                  setCustomAmount(
-                    String(
-                      Math.round(
-                        tripTotalEurPerPerson * SUPPORTED_CURRENCIES[userCurrency].rateFromEur
-                      )
-                    )
-                  );
-                }}
-                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition-colors cursor-pointer"
-              >
-                Reise p.P. ({formatMoney(tripTotalEurPerPerson, userCurrency)})
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFromCurrency(userCurrency);
-                  setCustomAmount(
-                    String(
-                      Math.round(
-                        tripTotalEurPerPerson *
-                          travelers *
-                          SUPPORTED_CURRENCIES[userCurrency].rateFromEur
-                      )
-                    )
-                  );
-                }}
-                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition-colors cursor-pointer"
-              >
-                Alle {travelers} Pers. ({formatMoney(tripTotalEurPerPerson * travelers, userCurrency)})
-              </button>
+              {[50, 100, 250, 500, 1000].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => {
+                    setFromCurrency(userCurrency);
+                    setCustomAmount(String(amt));
+                  }}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition-colors cursor-pointer"
+                >
+                  {amt} {userCurrency}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Local Price Cheat Sheet & No-DCC Fee Warning (5 cols) */}
+        {/* Right Column: Local Price Orientation & No-DCC Fee Tip (5 cols) */}
         <div className="lg:col-span-5 bg-slate-50 border border-slate-200/80 rounded-lg p-3.5 text-xs space-y-2">
           <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
             <span className="font-semibold text-slate-800">
-              Vor-Ort-Preise in {activeDestination.city.split(' ')[0]} ({userCurrency} vs. {destLocalMeta.code})
+              Nebenkosten-Orientierung in {activeDestination.city.split(' ')[0]}
             </span>
-            <span className="font-mono text-emerald-700 font-semibold tabular-nums">
-              Spart {formatMoney(airportExchangeLossEur, userCurrency)} Wechselgebühr
+            <span className="font-mono text-emerald-700 font-semibold">
+              Landeswährung: {destLocalMeta.code}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-slate-600">
             <div>
-              <span className="text-slate-500 block">Hauptgericht im Restaurant:</span>
+              <span className="text-slate-500 block">Ø Hauptgericht im Lokal:</span>
               <strong className="font-mono text-slate-900 tabular-nums">
-                {formatMoney(activeDestination.mealCostIndex, userCurrency, { exactDecimals: true })}
+                ca. {formatMoney(activeDestination.mealCostIndex, userCurrency, { exactDecimals: true })}
               </strong>
               {destLocalMeta.code !== userCurrency && (
                 <span className="text-slate-500 font-mono tabular-nums ml-1">
@@ -265,9 +233,9 @@ export const CurrencyConverterPanel: React.FC<CurrencyConverterPanelProps> = ({
               )}
             </div>
             <div>
-              <span className="text-slate-500 block">24h ÖPNV-Tagesticket:</span>
+              <span className="text-slate-500 block">Ø 24h ÖPNV-Tagesticket:</span>
               <strong className="font-mono text-slate-900 tabular-nums">
-                {formatMoney(activeDestination.localTransitDayPass, userCurrency, { exactDecimals: true })}
+                ca. {formatMoney(activeDestination.localTransitDayPass, userCurrency, { exactDecimals: true })}
               </strong>
               {destLocalMeta.code !== userCurrency && (
                 <span className="text-slate-500 font-mono tabular-nums ml-1">
