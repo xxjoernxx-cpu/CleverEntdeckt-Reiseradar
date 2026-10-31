@@ -1794,100 +1794,91 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 1. Flight Providers */}
+                {/* 1. Flight Providers (Only User's Official Partners) */}
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
-                    Schritt 1: Flug direkt beim Anbieter buchen ({activeDestCalc.chosenRoute.outbound.originCode} → {activeDestCalc.chosenRoute.outbound.destCode})
+                    Schritt 1: Flug direkt bei unseren Partnern buchen ({activeDestCalc.chosenRoute.outbound.originCode} → {activeDestCalc.chosenRoute.outbound.destCode})
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <a
-                      href={modalLinks.skyscannerFlightUrl}
+                      href={modalLinks.tripComUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="sponsored noopener noreferrer"
                       className="p-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>Skyscanner (Tiefpreis-Vergleich)</span>
+                      <span>Trip.com (Flug- & Kombi-Suche)</span>
                       <ExternalLink className="w-4 h-4 shrink-0" />
                     </a>
                     <a
-                      href={modalLinks.airlineDirectUrl}
+                      href={modalLinks.expediaFlightUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
+                      rel="sponsored noopener noreferrer"
+                      className="p-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>Direkt bei {modalLinks.airlineDirectName}</span>
+                      <span>Expedia Flugsuche öffnen</span>
                       <ExternalLink className="w-4 h-4 shrink-0" />
-                    </a>
-                    <a
-                      href={modalLinks.kayakFlightUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
-                    >
-                      <span>Kayak Flugsuche öffnen</span>
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    </a>
-                    <a
-                      href={modalLinks.googleFlightsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
-                    >
-                      <span>Google Flights öffnen</span>
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                   </div>
                 </div>
 
-                {/* 2. Hotel & Package Providers */}
+                {/* 2. Hotel, Package & Extras Providers (Only User's Official Partners) */}
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
-                    Schritt 2: Unterkunft oder Pauschal-Kombi direkt buchen
+                    Schritt 2: Pauschalreise, Hotel, Mietwagen & Aktivitäten buchen
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <a
-                      href={modalLinks.bookingHotelUrl}
+                      href={modalLinks.check24HolidayUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="sponsored noopener noreferrer"
                       className="p-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span className="truncate pr-2">Booking.com ({selectedHotelObj.name})</span>
+                      <span className="truncate pr-2">CHECK24 Pauschalreisen & Hotels</span>
                       <ExternalLink className="w-4 h-4 shrink-0" />
                     </a>
                     <a
-                      href={modalLinks.trivagoHotelUrl}
+                      href={modalLinks.abInDenUrlaubUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
+                      rel="sponsored noopener noreferrer"
+                      className="p-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>Alle günstigen Hotels in {activeDestination.city.split(' ')[0]}</span>
+                      <span>Ab in den Urlaub (Pauschal & Deals)</span>
                       <ExternalLink className="w-4 h-4 shrink-0" />
                     </a>
                     <a
                       href={modalLinks.expediaPackageUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="sponsored noopener noreferrer"
                       className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>Expedia (Flug + Hotel Kombi)</span>
+                      <span>Expedia ({selectedHotelObj.name} & Kombi)</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                     <a
-                      href={modalLinks.check24HolidayUrl}
+                      href={modalLinks.snowTrexUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="sponsored noopener noreferrer"
                       className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>Check24 Pauschalreisen</span>
+                      <span>ASI Reisen (Rund-, Berg- & Aktivreisen)</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                    <a
+                      href={modalLinks.klookActivitiesUrl}
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
+                    >
+                      <span>Klook (Touren, Tickets & Transfers)</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                     <a
                       href={modalLinks.rentalCarUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors sm:col-span-2"
+                      rel="sponsored noopener noreferrer"
+                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
-                      <span>DiscoverCars Mietwagen ab Zielflughafen ({activeDestCalc.chosenRoute.outbound.destCode})</span>
+                      <span>DiscoverCars Mietwagen ({activeDestCalc.chosenRoute.outbound.destCode})</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                   </div>

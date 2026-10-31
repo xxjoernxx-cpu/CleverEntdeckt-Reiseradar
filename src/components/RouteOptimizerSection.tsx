@@ -280,30 +280,30 @@ export const RouteOptimizerSection: React.FC<RouteOptimizerSectionProps> = ({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <a
-                            href={routeLinks.skyscannerFlightUrl}
+                            href={routeLinks.tripComUrl}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="sponsored noopener noreferrer"
                             className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-md transition-colors whitespace-nowrap"
                           >
-                            <span>Flug auf Skyscanner buchen</span>
+                            <span>Flug auf Trip.com buchen</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                           <a
-                            href={routeLinks.kayakFlightUrl}
+                            href={routeLinks.expediaFlightUrl}
                             target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-md transition-colors whitespace-nowrap"
+                            rel="sponsored noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-md transition-colors whitespace-nowrap"
                           >
-                            <span>Kayak</span>
+                            <span>Flug auf Expedia</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                           <a
-                            href={routeLinks.airlineDirectUrl}
+                            href={routeLinks.check24HolidayUrl}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="sponsored noopener noreferrer"
                             className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-md transition-colors whitespace-nowrap"
                           >
-                            <span>Direkt bei {routeLinks.airlineDirectName}</span>
+                            <span>Kombi bei CHECK24</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         </div>
@@ -393,16 +393,36 @@ export const RouteOptimizerSection: React.FC<RouteOptimizerSectionProps> = ({
                           </span>
                         </div>
 
-                        <div onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
                           <a
-                            href={hotelLinks.bookingHotelUrl}
+                            href={hotelLinks.expediaPackageUrl}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="sponsored noopener noreferrer"
                             className="w-full py-1.5 px-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap"
                           >
-                            <span>Auf Booking.com buchen</span>
+                            <span>Auf Expedia buchen</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <a
+                              href={hotelLinks.check24HolidayUrl}
+                              target="_blank"
+                              rel="sponsored noopener noreferrer"
+                              className="py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-semibold rounded-md transition-colors flex items-center justify-center gap-1 whitespace-nowrap"
+                            >
+                              <span>CHECK24</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                            <a
+                              href={hotelLinks.abInDenUrlaubUrl}
+                              target="_blank"
+                              rel="sponsored noopener noreferrer"
+                              className="py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-semibold rounded-md transition-colors flex items-center justify-center gap-1 whitespace-nowrap"
+                            >
+                              <span>Ab in d. Urlaub</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          </div>
                         </div>
                       </div>
                     </div>

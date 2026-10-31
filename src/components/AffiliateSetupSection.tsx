@@ -687,12 +687,12 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   },
                   {
                     key: 'expedia',
-                    label: 'Expedia Link (Pakete & Hotels)',
+                    label: 'Expedia Link (Pakete, Hotels & Flüge)',
                     url: sampleLinks.expediaPackageUrl,
                   },
                   {
                     key: 'check24',
-                    label: 'Check24 Link (Pauschalreisen)',
+                    label: 'CHECK24 Link (Pauschalreisen)',
                     url: sampleLinks.check24HolidayUrl,
                   },
                   {
@@ -707,8 +707,13 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   },
                   {
                     key: 'snowtrex',
-                    label: 'SnowTrex Link (Ski- & Bergurlaub)',
+                    label: 'ASI Reisen Link (Rund-, Berg- & Aktivreisen)',
                     url: sampleLinks.snowTrexUrl,
+                  },
+                  {
+                    key: 'klook',
+                    label: 'Klook Link (Touren, Aktivitäten & Transfers)',
+                    url: sampleLinks.klookActivitiesUrl,
                   },
                   {
                     key: 'discovercars',
@@ -829,19 +834,19 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
 
                 <div className="pt-3 border-t border-slate-800 space-y-1.5 text-slate-300">
                   <div className="flex justify-between">
-                    <span>1. Flug-Klicks & Weiterleitungen (Trip.com / Skyscanner / Kayak)</span>
+                    <span>1. Flug-Buchungen (Trip.com & Expedia Flights)</span>
                     <span className="font-mono text-white tabular-nums">
                       +{formatMoney(flightClickRevenueEur, userCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>2. Hotel- & Pauschal-Provisionen (Expedia, Ab in den Urlaub, SnowTrex)</span>
+                    <span>2. Pauschal & Hotels (CHECK24, Ab in den Urlaub, Expedia, ASI Reisen)</span>
                     <span className="font-mono text-white tabular-nums">
                       +{formatMoney(hotelCommissionEur, userCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>3. Mietwagen & Reise-Extras (DiscoverCars, Airalo)</span>
+                    <span>3. Mietwagen & Erlebnisse (DiscoverCars & Klook)</span>
                     <span className="font-mono text-white tabular-nums">
                       +{formatMoney(extrasCommissionEur, userCurrency)}
                     </span>
@@ -850,63 +855,63 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
               </div>
             </div>
 
-            {/* High-Margin Cross-Selling Preview (automatically linked with their Marker) */}
+            {/* High-Margin Cross-Selling Preview (only user's real extra partners) */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
               <div className="text-xs font-bold text-slate-900 mb-2">
-                Zusätzliche Hochprovisions-Extras (bereits für {activeDestinationCity.split(' ')[0]} verknüpft):
+                Zusätzliche Hochprovisions-Partner (aktiv verknüpft für {activeDestinationCity.split(' ')[0]}):
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <a
                   href={sampleLinks.rentalCarUrl}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="sponsored noopener noreferrer"
                   className="p-2.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg flex flex-col justify-between transition-colors"
                 >
                   <div className="flex items-center justify-between text-slate-700 font-semibold">
                     <span className="flex items-center gap-1">
                       <Car className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Mietwagen</span>
+                      <span>DiscoverCars</span>
                     </span>
                     <ExternalLink className="w-3 h-3 text-slate-400" />
                   </div>
                   <span className="text-[10px] text-emerald-700 font-mono mt-1 block">
-                    ~35 € Provision / Buchung
+                    ✓ a_aid: CleverEntdeckt
                   </span>
                 </a>
 
                 <a
-                  href={sampleLinks.esimDataUrl}
+                  href={sampleLinks.klookActivitiesUrl}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="sponsored noopener noreferrer"
                   className="p-2.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg flex flex-col justify-between transition-colors"
                 >
                   <div className="flex items-center justify-between text-slate-700 font-semibold">
                     <span className="flex items-center gap-1">
                       <Smartphone className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Reise-eSIM</span>
+                      <span>Klook Touren</span>
                     </span>
                     <ExternalLink className="w-3 h-3 text-slate-400" />
                   </div>
                   <span className="text-[10px] text-emerald-700 font-mono mt-1 block">
-                    15 % Provision (Airalo)
+                    ✓ Marker: 771810
                   </span>
                 </a>
 
                 <a
-                  href={sampleLinks.flightCompensationUrl}
+                  href={sampleLinks.snowTrexUrl}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="sponsored noopener noreferrer"
                   className="p-2.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg flex flex-col justify-between transition-colors"
                 >
                   <div className="flex items-center justify-between text-slate-700 font-semibold">
                     <span className="flex items-center gap-1">
                       <Scale className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Flug-Entschäd.</span>
+                      <span>ASI Reisen</span>
                     </span>
                     <ExternalLink className="w-3 h-3 text-slate-400" />
                   </div>
                   <span className="text-[10px] text-emerald-700 font-mono mt-1 block">
-                    ~40 € pro Verspätung
+                    ✓ Awin: 3034525
                   </span>
                 </a>
               </div>

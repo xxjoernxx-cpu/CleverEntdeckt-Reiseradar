@@ -228,12 +228,6 @@ export interface AffiliatePartnerConfig {
 
 export const DEFAULT_EXTRA_PARTNERS: CustomAffiliatePartner[] = [
   {
-    id: 'asi-reisen-awin-126961',
-    name: 'ASI Reisen (Rund-, Berg- & Aktivreisen)',
-    url: 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525',
-    category: 'package',
-  },
-  {
     id: 'klook-tp-771810',
     name: 'Klook Erlebnisse & Transfers',
     url: 'https://tp.media/r?campaign_id=137&marker=771810&p=4110&trs=568370&u=https%3A%2F%2Fklook.com',
@@ -266,7 +260,6 @@ export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
     const raw = localStorage.getItem('sparflug_affiliate_config');
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Merge saved extraPartners with DEFAULT_EXTRA_PARTNERS so new pre-configured partners (ASI Reisen, Klook) are always included
       const savedExtras: CustomAffiliatePartner[] = Array.isArray(parsed?.extraPartners)
         ? parsed.extraPartners
         : [];
@@ -275,6 +268,8 @@ export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
         if (
           item &&
           item.url &&
+          item.id !== 'asi-reisen-awin-126961' &&
+          !item.url.includes('v=126961') &&
           !mergedExtras.some((def) => def.id === item.id || def.url === item.url)
         ) {
           mergedExtras.push(item);
@@ -476,6 +471,7 @@ export interface ProviderBookingLinks {
   bestDealProviderName: string;
   comparedPartnerOffers: ComparedPartnerOffer[];
   skyscannerFlightUrl: string;
+  expediaFlightUrl: string;
   kayakFlightUrl: string;
   googleFlightsUrl: string;
   airlineDirectUrl: string;
@@ -487,6 +483,7 @@ export interface ProviderBookingLinks {
   abInDenUrlaubUrl: string;
   tripComUrl: string;
   snowTrexUrl: string;
+  klookActivitiesUrl: string;
   bahnTransferUrl: string;
   rentalCarUrl: string;
   esimDataUrl: string;
@@ -556,14 +553,10 @@ export function buildProviderBookingLinks(params: {
   const cleanCity = destCity.split('&')[0].trim();
 
   const markerSuffix = marker ? `&marker=${encodeURIComponent(marker)}&utm_source=sparflug_partner_${encodeURIComponent(marker)}` : '';
-  const aidSuffix = aid
-    ? `&aid=${encodeURIComponent(aid)}`
-    : marker
-    ? `&label=tp_marker_${encodeURIComponent(marker)}`
-    : '';
+  const aidSuffix = aid ? `&aid=${encodeURIComponent(aid)}` : '';
   const awinSuffix = awin ? `&awc=${encodeURIComponent(awin)}` : marker ? `&utm_term=${encodeURIComponent(marker)}` : '';
 
-  // Format DDMM for Aviasales (official Travelpayouts flight meta-search)
+  // Format DDMM for Aviasales
   const outParts = departureDateStr.split('-');
   const inParts = returnDateStr.split('-');
   const aviaOut = outParts.length === 3 ? `${outParts[2]}${outParts[1]}` : '1711';
@@ -579,16 +572,28 @@ export function buildProviderBookingLinks(params: {
     'allianceid'
   );
 
-  // 1. Flight Search Deep Link:
-  // Priority A: User's custom Flight Affiliate Link (Skyscanner via Impact, Aviasales, Kiwi.com, Trip.com)
-  // Priority B: User's dedicated Trip.com Affiliate Link if entered
-  // Priority C: User's existing Expedia Affiliate Link (Expedia Flights) if checkbox is enabled
-  // Priority D: Travelpayouts Aviasales flight search if Travelpayouts Marker-ID is entered
-  // Priority E: Standard Skyscanner search
+  // Expedia Flight Search Deep Link (via Partnerize camref:1100l6tjov)
+  const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?trip=roundtrip&leg1=from:${encodeURIComponent(originCode)},to:${encodeURIComponent(destCode)},departure:${departureDateStr}TANYT&leg2=from:${encodeURIComponent(destCode)},to:${encodeURIComponent(originCode)},departure:${returnDateStr}TANYT&passengers=adults:${travelers}&mode=search`;
+  const expediaFlightUrl = resolveCustomAffiliateUrl(
+    aff.customExpediaUrl,
+    baseExpediaFlightUrl,
+    'expedia',
+    'affcid'
+  );
+
+  // Klook Activities & Airport Transfers Deep Link (via Travelpayouts campaign_id=137 & marker=771810)
+  const baseKlookSearchUrl = `https://www.klook.com/de/search/result/?query=${encodeURIComponent(cleanCity)}`;
+  const klookPartnerEntry = activeExtraPartners.find((p) => p.url.toLowerCase().includes('klook'));
+  const klookActivitiesUrl = resolveCustomAffiliateUrl(
+    klookPartnerEntry?.url || 'https://tp.media/r?campaign_id=137&marker=771810&p=4110&trs=568370&u=https%3A%2F%2Fklook.com',
+    baseKlookSearchUrl,
+    'klook',
+    'marker'
+  );
+
   const baseSkyscannerUrl = `https://www.skyscanner.de/transport/fluge/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${skyOut}/${skyIn}/?adultsv2=${travelers}&cabinclass=economy&currency=${userCurrency}`;
   const baseAviasalesUrl = `https://www.aviasales.com/search/${originCode.toUpperCase()}${aviaOut}${destCode.toUpperCase()}${aviaIn}${travelers}?currency=${userCurrency.toLowerCase()}${marker ? `&marker=${encodeURIComponent(marker)}` : ''}`;
   const baseKiwiFlightUrl = `https://www.kiwi.com/de/search/results/${originCode.toLowerCase()}-${destCode.toLowerCase()}/${departureDateStr}/${returnDateStr}?adults=${travelers}`;
-  const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?trip=roundtrip&leg1=from:${encodeURIComponent(originCode)},to:${encodeURIComponent(destCode)},departure:${departureDateStr}TANYT&leg2=from:${encodeURIComponent(destCode)},to:${encodeURIComponent(originCode)},departure:${returnDateStr}TANYT&passengers=adults:${travelers}&mode=search`;
 
   const customFlightInput = (aff.customSkyscannerUrl || '').trim();
   const skyscannerFlightUrl = customFlightInput
@@ -610,70 +615,14 @@ export function buildProviderBookingLinks(params: {
       )
     : hasDirectTripCom
     ? tripComUrl
-    : aff.useExpediaForFlightsIfNoSkyscanner && aff.customExpediaUrl?.trim()
-    ? resolveCustomAffiliateUrl(aff.customExpediaUrl, baseExpediaFlightUrl, 'expedia', 'affcid')
-    : marker
-    ? baseAviasalesUrl
-    : baseSkyscannerUrl;
+    : expediaFlightUrl;
 
-  // 2. Kayak / Aviasales exact flight search deep link (+ Affiliate Marker)
-  const kayakFlightUrl = marker
-    ? baseAviasalesUrl
-    : `https://www.kayak.de/flights/${originCode}-${destCode}/${departureDateStr}/${returnDateStr}/${travelers}adults?sort=price_a`;
+  // Map secondary flight links directly to the user's real flight partners (Expedia & Trip.com)
+  const kayakFlightUrl = expediaFlightUrl;
+  const googleFlightsUrl = tripComUrl;
+  const airlineDirectUrl = tripComUrl;
 
-  // 3. Google Flights deep link with query
-  const googleFlightsQ = encodeURIComponent(
-    `Flüge von ${originCode} nach ${destCode} am ${departureDateStr} zurück am ${returnDateStr}`
-  );
-  const googleFlightsUrl = `https://www.google.com/travel/flights?hl=de&curr=${userCurrency}&q=${googleFlightsQ}`;
-
-  // 4. Direct Airline Portal URL
-  const cLower = carrierName.toLowerCase();
-  let airlineDirectUrl = skyscannerFlightUrl;
-  if (cLower.includes('ryanair')) {
-    airlineDirectUrl = `https://www.ryanair.com/de/de/trip/flights/select?adults=${travelers}&dateOut=${departureDateStr}&dateIn=${returnDateStr}&originIata=${originCode}&destinationIata=${destCode}&isReturn=true`;
-  } else if (cLower.includes('eurowings')) {
-    airlineDirectUrl = `https://www.eurowings.com/de/buchen/fluege.html`;
-  } else if (cLower.includes('wizz')) {
-    airlineDirectUrl = `https://wizzair.com/de-de`;
-  } else if (cLower.includes('lufthansa')) {
-    airlineDirectUrl = `https://www.lufthansa.com/de/de/fluege`;
-  } else if (cLower.includes('easyjet')) {
-    airlineDirectUrl = `https://www.easyjet.com/de`;
-  } else if (cLower.includes('tap')) {
-    airlineDirectUrl = `https://www.flytap.com/de-de/`;
-  } else if (cLower.includes('pegasus')) {
-    airlineDirectUrl = `https://www.flypgs.com/de`;
-  } else if (cLower.includes('turkish')) {
-    airlineDirectUrl = `https://www.turkishairlines.com/de-de/`;
-  } else if (cLower.includes('condor')) {
-    airlineDirectUrl = `https://www.condor.com/de`;
-  } else if (cLower.includes('aegean')) {
-    airlineDirectUrl = `https://de.aegeanair.com/`;
-  }
-
-  // 5. Booking.com exact hotel + dates + adults + currency deep link (Direct Link has 100% priority over Travelpayouts)
-  const rooms = Math.max(1, Math.ceil(travelers / 2));
-  const bookingSearchQuery = encodeURIComponent(`${hotelName} ${cleanCity}`);
-  const hasDirectBooking = Boolean(aff.customBookingUrl?.trim());
-  const baseBookingHotelUrl = `https://www.booking.com/searchresults.de.html?ss=${bookingSearchQuery}&checkin=${departureDateStr}&checkout=${returnDateStr}&group_adults=${travelers}&no_rooms=${rooms}&selected_currency=${userCurrency}${hasDirectBooking ? '' : aidSuffix}`;
-  const bookingHotelUrl = resolveCustomAffiliateUrl(
-    aff.customBookingUrl,
-    baseBookingHotelUrl,
-    'booking.com',
-    'aid'
-  );
-
-  // 6. City-wide cheapest hotels on Booking.com (Direct Link has 100% priority)
-  const baseTrivagoHotelUrl = `https://www.booking.com/searchresults.de.html?ss=${encodeURIComponent(cleanCity)}&checkin=${departureDateStr}&checkout=${returnDateStr}&group_adults=${travelers}&no_rooms=${rooms}&order=price&selected_currency=${userCurrency}${hasDirectBooking ? '' : aidSuffix}`;
-  const trivagoHotelUrl = resolveCustomAffiliateUrl(
-    aff.customBookingUrl,
-    baseTrivagoHotelUrl,
-    'booking.com',
-    'aid'
-  );
-
-  // 7. Expedia Flight + Hotel Package search (Direct Expedia Link has 100% priority; Travelpayouts marker is NOT attached if customExpediaUrl is set)
+  // 5. Expedia Flight + Hotel Package search (Direct Expedia Link has 100% priority)
   const hasDirectExpedia = Boolean(aff.customExpediaUrl?.trim());
   const baseExpediaUrl = `https://www.expedia.de/Hotel-Search?destination=${encodeURIComponent(cleanCity)}&startDate=${departureDateStr}&endDate=${returnDateStr}&adults=${travelers}${hasDirectExpedia ? '' : markerSuffix}`;
   const expediaPackageUrl = resolveCustomAffiliateUrl(
@@ -682,6 +631,17 @@ export function buildProviderBookingLinks(params: {
     'expedia',
     'affcid'
   );
+
+  // 6. Booking.com (Only if user explicitly configured a Booking.com link/AID; otherwise falls back to Expedia Hotel partner link)
+  const rooms = Math.max(1, Math.ceil(travelers / 2));
+  const bookingSearchQuery = encodeURIComponent(`${hotelName} ${cleanCity}`);
+  const hasDirectBooking = Boolean(aff.customBookingUrl?.trim() || aid);
+  const baseBookingHotelUrl = `https://www.booking.com/searchresults.de.html?ss=${bookingSearchQuery}&checkin=${departureDateStr}&checkout=${returnDateStr}&group_adults=${travelers}&no_rooms=${rooms}&selected_currency=${userCurrency}${aidSuffix}`;
+  const bookingHotelUrl = hasDirectBooking
+    ? resolveCustomAffiliateUrl(aff.customBookingUrl, baseBookingHotelUrl, 'booking.com', 'aid')
+    : expediaPackageUrl;
+
+  const trivagoHotelUrl = expediaPackageUrl;
 
   // 8. Check24 Pauschalreise comparison (Direct Check24 Link has 100% priority)
   const hasDirectCheck24 = Boolean(aff.customCheck24Url?.trim());
@@ -703,20 +663,20 @@ export function buildProviderBookingLinks(params: {
     'partnerid'
   );
 
-  // 8c. SnowTrex Winter-, Ski- & Bergurlaub Deep Link
+  // 8c. ASI Reisen (Rund-, Berg- & Aktivreisen via Awin v=126961)
   const hasDirectSnowTrex = Boolean(aff.customSnowTrexUrl?.trim());
-  const baseSnowTrexUrl = `https://www.snowtrex.de/suche.html?q=${encodeURIComponent(cleanCity)}&persons=${travelers}`;
+  const baseSnowTrexUrl = `https://www.asi-reisen.de/`;
   const snowTrexUrl = resolveCustomAffiliateUrl(
     aff.customSnowTrexUrl,
     baseSnowTrexUrl,
-    'snowtrex',
+    'asi-reisen',
     'partnerid'
   );
 
-  // 9. Deutsche Bahn / ÖPNV Airport Transfer
-  const bahnTransferUrl = `https://www.bahn.de/`;
+  // 9. Transfer & Activities (Klook Partner Link)
+  const bahnTransferUrl = klookActivitiesUrl;
 
-  // 10. High-Margin Cross-Selling Links (Direct DiscoverCars Link has 100% priority; Travelpayouts marker is NOT attached if customDiscoverCarsUrl is set)
+  // 10. High-Margin Cross-Selling Links (Direct DiscoverCars Link has 100% priority)
   const hasDirectDiscoverCars = Boolean(aff.customDiscoverCarsUrl?.trim());
   const baseRentalCarUrl = `https://www.discovercars.com/de?iata=${encodeURIComponent(destCode)}${!hasDirectDiscoverCars && marker ? `&a_aid=${encodeURIComponent(marker)}` : ''}`;
   const rentalCarUrl = resolveCustomAffiliateUrl(
@@ -725,11 +685,11 @@ export function buildProviderBookingLinks(params: {
     'discovercars',
     'a_aid'
   );
-  const esimDataUrl = `https://www.airalo.com/de${marker ? `?tp_marker=${encodeURIComponent(marker)}` : ''}`;
-  const flightCompensationUrl = `https://www.airhelp.com/de/${marker ? `?utm_source=tp_${encodeURIComponent(marker)}` : ''}`;
+  const esimDataUrl = klookActivitiesUrl;
+  const flightCompensationUrl = snowTrexUrl;
 
   // 11. Smart Single-Button Best-Price Router ("1 Button zum günstigsten Anbieter inkl. aktivem Affiliate-Link")
-  // Prioritizes providers where the user has an active affiliate link, then picks the lowest-priced provider for the destination
+  // Strictly uses ONLY the user's real affiliate partners
   const citySeed = cleanCity
     .split('')
     .reduce((acc, ch, idx) => acc + ch.charCodeAt(0) * (idx + 1), 0);
@@ -762,15 +722,15 @@ export function buildProviderBookingLinks(params: {
       providerShortName: 'Expedia',
       name: 'Expedia Bestpreis',
       url: expediaPackageUrl,
-      hasActiveAffiliate: Boolean(hasDirectExpedia || marker),
+      hasActiveAffiliate: hasDirectExpedia,
       rawRankScore: isLongHaulOrCityDest ? 1 : isBeachHolidayDest ? 2 : (citySeed % 3) + 1,
     },
     {
       id: 'check24',
-      providerShortName: 'Check24',
-      name: 'Check24 Tiefpreis',
+      providerShortName: 'CHECK24',
+      name: 'CHECK24 Tiefpreis',
       url: check24HolidayUrl,
-      hasActiveAffiliate: Boolean(hasDirectCheck24 || awin || marker),
+      hasActiveAffiliate: hasDirectCheck24,
       rawRankScore: isBeachHolidayDest ? 1 : isLongHaulOrCityDest ? 2 : ((citySeed + 1) % 3) + 1,
     },
     {
@@ -790,22 +750,25 @@ export function buildProviderBookingLinks(params: {
       rawRankScore: isLongHaulOrCityDest ? 1 : ((citySeed + 1) % 3) + 1,
     },
     {
-      id: 'snowtrex',
-      providerShortName: 'SnowTrex',
-      name: 'SnowTrex Winter-Deal',
+      id: 'asireisen',
+      providerShortName: 'ASI Reisen',
+      name: 'ASI Reisen Aktiv-Deal',
       url: snowTrexUrl,
       hasActiveAffiliate: hasDirectSnowTrex,
-      rawRankScore: isWinterOrMountainDest ? 0 : 3,
+      rawRankScore: isWinterOrMountainDest ? 0 : 2,
     },
-    {
+  ];
+
+  if (hasDirectBooking) {
+    candidateOffers.push({
       id: 'booking',
       providerShortName: 'Booking.com',
       name: 'Booking.com Sparpreis',
       url: bookingHotelUrl,
-      hasActiveAffiliate: Boolean(hasDirectBooking || aid || marker),
-      rawRankScore: !isLongHaulOrCityDest && !isBeachHolidayDest && citySeed % 4 === 0 ? 1 : 3,
-    },
-  ];
+      hasActiveAffiliate: true,
+      rawRankScore: 2,
+    });
+  }
 
   if (customFlightInput) {
     candidateOffers.push({
@@ -818,11 +781,11 @@ export function buildProviderBookingLinks(params: {
     });
   }
 
-  // Include all user-added extra affiliate partners ("usw.")
+  // Include all user-added extra affiliate partners (e.g. Klook)
   activeExtraPartners.forEach((partner, idx) => {
     const pLower = `${partner.name} ${partner.url}`.toLowerCase();
     const extraDeepDefault = pLower.includes('klook')
-      ? `https://www.klook.com/de/search/result/?query=${encodeURIComponent(cleanCity)}`
+      ? baseKlookSearchUrl
       : pLower.includes('kiwi')
       ? baseKiwiFlightUrl
       : partner.url;
@@ -842,7 +805,7 @@ export function buildProviderBookingLinks(params: {
     });
   });
 
-  // Strictly filter to the partners configured by the user (if at least 1 partner is configured)
+  // Strictly filter to the partners configured by the user
   const monetizedCandidates = candidateOffers.filter((c) => c.hasActiveAffiliate);
   const poolToUse = [...(monetizedCandidates.length > 0 ? monetizedCandidates : candidateOffers)].sort(
     (a, b) => a.rawRankScore - b.rawRankScore
@@ -866,6 +829,7 @@ export function buildProviderBookingLinks(params: {
     bestDealProviderName: bestWinner.name,
     comparedPartnerOffers,
     skyscannerFlightUrl,
+    expediaFlightUrl,
     kayakFlightUrl,
     googleFlightsUrl,
     airlineDirectUrl,
@@ -877,6 +841,7 @@ export function buildProviderBookingLinks(params: {
     abInDenUrlaubUrl,
     tripComUrl,
     snowTrexUrl,
+    klookActivitiesUrl,
     bahnTransferUrl,
     rentalCarUrl,
     esimDataUrl,
