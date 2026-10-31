@@ -169,8 +169,8 @@ export default function App() {
 
   const handleHubChange = (newHubCode: string) => {
     setOriginCode(newHubCode);
-    // Automatically switch to CHF when selecting Zurich if user was on default EUR
-    if (newHubCode === 'ZRH' && userCurrency === 'EUR') {
+    // Automatically switch to CHF when selecting a Swiss airport if user was on default EUR
+    if (['ZRH', 'BSL', 'GVA'].includes(newHubCode) && userCurrency === 'EUR') {
       setUserCurrency('CHF');
     }
   };

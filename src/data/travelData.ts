@@ -979,8 +979,8 @@ export const DEPARTURE_HUBS: DepartureHub[] = [
     name: 'Berlin (BER)',
     nearbyCodes: [
       { code: 'LEJ', name: 'Leipzig/Halle (LEJ)', distanceKm: 165, railTimeMin: 75 },
+      { code: 'DRS', name: 'Dresden (DRS)', distanceKm: 175, railTimeMin: 95 },
       { code: 'SZZ', name: 'Stettin (SZZ)', distanceKm: 140, railTimeMin: 110 },
-      { code: 'HAM', name: 'Hamburg (HAM)', distanceKm: 280, railTimeMin: 105 },
     ],
   },
   {
@@ -1004,6 +1004,176 @@ export const DEPARTURE_HUBS: DepartureHub[] = [
     ],
   },
   {
+    code: 'HAM',
+    city: 'Hamburg & Norddeutschland',
+    name: 'Hamburg (HAM)',
+    nearbyCodes: [
+      { code: 'BRE', name: 'Bremen (BRE)', distanceKm: 120, railTimeMin: 65 },
+      { code: 'HAJ', name: 'Hannover (HAJ)', distanceKm: 150, railTimeMin: 80 },
+      { code: 'LBC', name: 'Lübeck (LBC)', distanceKm: 65, railTimeMin: 50 },
+    ],
+  },
+  {
+    code: 'CGN',
+    city: 'Köln/Bonn & Rheinland',
+    name: 'Köln/Bonn (CGN)',
+    nearbyCodes: [
+      { code: 'DUS', name: 'Düsseldorf (DUS)', distanceKm: 55, railTimeMin: 35 },
+      { code: 'NRN', name: 'Weeze (NRN)', distanceKm: 115, railTimeMin: 85 },
+      { code: 'FRA', name: 'Frankfurt (FRA)', distanceKm: 155, railTimeMin: 52 },
+    ],
+  },
+  {
+    code: 'STR',
+    city: 'Stuttgart & Baden-Württemberg',
+    name: 'Stuttgart (STR)',
+    nearbyCodes: [
+      { code: 'FKB', name: 'Karlsruhe/Baden (FKB)', distanceKm: 95, railTimeMin: 65 },
+      { code: 'FMM', name: 'Memmingen (FMM)', distanceKm: 135, railTimeMin: 85 },
+      { code: 'FRA', name: 'Frankfurt (FRA)', distanceKm: 185, railTimeMin: 78 },
+    ],
+  },
+  {
+    code: 'HAJ',
+    city: 'Hannover & Niedersachsen',
+    name: 'Hannover (HAJ)',
+    nearbyCodes: [
+      { code: 'BRE', name: 'Bremen (BRE)', distanceKm: 125, railTimeMin: 65 },
+      { code: 'PAD', name: 'Paderborn (PAD)', distanceKm: 130, railTimeMin: 85 },
+      { code: 'HAM', name: 'Hamburg (HAM)', distanceKm: 150, railTimeMin: 80 },
+    ],
+  },
+  {
+    code: 'NUE',
+    city: 'Nürnberg & Franken',
+    name: 'Nürnberg (NUE)',
+    nearbyCodes: [
+      { code: 'MUC', name: 'München (MUC)', distanceKm: 160, railTimeMin: 65 },
+      { code: 'FMM', name: 'Memmingen (FMM)', distanceKm: 180, railTimeMin: 110 },
+      { code: 'FRA', name: 'Frankfurt (FRA)', distanceKm: 220, railTimeMin: 125 },
+    ],
+  },
+  {
+    code: 'LEJ',
+    city: 'Leipzig/Halle & Mitteldeutschland',
+    name: 'Leipzig/Halle (LEJ)',
+    nearbyCodes: [
+      { code: 'DRS', name: 'Dresden (DRS)', distanceKm: 115, railTimeMin: 70 },
+      { code: 'BER', name: 'Berlin (BER)', distanceKm: 165, railTimeMin: 75 },
+      { code: 'ERF', name: 'Erfurt (ERF)', distanceKm: 110, railTimeMin: 55 },
+    ],
+  },
+  {
+    code: 'DTM',
+    city: 'Dortmund & Westfalen',
+    name: 'Dortmund (DTM)',
+    nearbyCodes: [
+      { code: 'PAD', name: 'Paderborn (PAD)', distanceKm: 80, railTimeMin: 55 },
+      { code: 'FMO', name: 'Münster/Osnabrück (FMO)', distanceKm: 85, railTimeMin: 60 },
+      { code: 'DUS', name: 'Düsseldorf (DUS)', distanceKm: 65, railTimeMin: 48 },
+    ],
+  },
+  {
+    code: 'BRE',
+    city: 'Bremen & Nordwesten',
+    name: 'Bremen (BRE)',
+    nearbyCodes: [
+      { code: 'HAJ', name: 'Hannover (HAJ)', distanceKm: 125, railTimeMin: 65 },
+      { code: 'HAM', name: 'Hamburg (HAM)', distanceKm: 120, railTimeMin: 65 },
+      { code: 'FMO', name: 'Münster/Osnabrück (FMO)', distanceKm: 145, railTimeMin: 80 },
+    ],
+  },
+  {
+    code: 'DRS',
+    city: 'Dresden & Sachsen',
+    name: 'Dresden (DRS)',
+    nearbyCodes: [
+      { code: 'LEJ', name: 'Leipzig/Halle (LEJ)', distanceKm: 115, railTimeMin: 70 },
+      { code: 'PRG', name: 'Prag (PRG)', distanceKm: 150, railTimeMin: 115 },
+      { code: 'BER', name: 'Berlin (BER)', distanceKm: 175, railTimeMin: 95 },
+    ],
+  },
+  {
+    code: 'FMM',
+    city: 'Memmingen & Allgäu',
+    name: 'Memmingen (FMM)',
+    nearbyCodes: [
+      { code: 'FDH', name: 'Friedrichshafen (FDH)', distanceKm: 75, railTimeMin: 60 },
+      { code: 'MUC', name: 'München (MUC)', distanceKm: 115, railTimeMin: 70 },
+      { code: 'STR', name: 'Stuttgart (STR)', distanceKm: 135, railTimeMin: 85 },
+    ],
+  },
+  {
+    code: 'FKB',
+    city: 'Karlsruhe/Baden-Baden',
+    name: 'Karlsruhe/Baden (FKB)',
+    nearbyCodes: [
+      { code: 'STR', name: 'Stuttgart (STR)', distanceKm: 95, railTimeMin: 65 },
+      { code: 'SXB', name: 'Straßburg (SXB)', distanceKm: 55, railTimeMin: 45 },
+      { code: 'BSL', name: 'Basel (BSL)', distanceKm: 160, railTimeMin: 95 },
+    ],
+  },
+  {
+    code: 'FMO',
+    city: 'Münster/Osnabrück',
+    name: 'Münster/Osnabrück (FMO)',
+    nearbyCodes: [
+      { code: 'DTM', name: 'Dortmund (DTM)', distanceKm: 85, railTimeMin: 60 },
+      { code: 'PAD', name: 'Paderborn (PAD)', distanceKm: 95, railTimeMin: 65 },
+      { code: 'EIN', name: 'Eindhoven (EIN)', distanceKm: 165, railTimeMin: 110 },
+    ],
+  },
+  {
+    code: 'PAD',
+    city: 'Paderborn/Lippstadt',
+    name: 'Paderborn (PAD)',
+    nearbyCodes: [
+      { code: 'DTM', name: 'Dortmund (DTM)', distanceKm: 80, railTimeMin: 55 },
+      { code: 'FMO', name: 'Münster/Osnabrück (FMO)', distanceKm: 95, railTimeMin: 65 },
+      { code: 'HAJ', name: 'Hannover (HAJ)', distanceKm: 130, railTimeMin: 85 },
+    ],
+  },
+  {
+    code: 'HHN',
+    city: 'Frankfurt-Hahn & Hunsrück',
+    name: 'Frankfurt-Hahn (HHN)',
+    nearbyCodes: [
+      { code: 'LUX', name: 'Luxemburg (LUX)', distanceKm: 110, railTimeMin: 80 },
+      { code: 'FRA', name: 'Frankfurt (FRA)', distanceKm: 120, railTimeMin: 95 },
+      { code: 'CGN', name: 'Köln/Bonn (CGN)', distanceKm: 145, railTimeMin: 105 },
+    ],
+  },
+  {
+    code: 'NRN',
+    city: 'Weeze / Niederrhein',
+    name: 'Weeze / Niederrhein (NRN)',
+    nearbyCodes: [
+      { code: 'EIN', name: 'Eindhoven (EIN)', distanceKm: 65, railTimeMin: 55 },
+      { code: 'DUS', name: 'Düsseldorf (DUS)', distanceKm: 75, railTimeMin: 65 },
+      { code: 'CGN', name: 'Köln/Bonn (CGN)', distanceKm: 115, railTimeMin: 85 },
+    ],
+  },
+  {
+    code: 'VIE',
+    city: 'Wien & Ostösterreich',
+    name: 'Wien (VIE)',
+    nearbyCodes: [
+      { code: 'BTS', name: 'Bratislava (BTS)', distanceKm: 62, railTimeMin: 55 },
+      { code: 'GRZ', name: 'Graz (GRZ)', distanceKm: 185, railTimeMin: 135 },
+      { code: 'BUD', name: 'Budapest (BUD)', distanceKm: 240, railTimeMin: 145 },
+    ],
+  },
+  {
+    code: 'SZG',
+    city: 'Salzburg & Oberösterreich',
+    name: 'Salzburg (SZG)',
+    nearbyCodes: [
+      { code: 'MUC', name: 'München (MUC)', distanceKm: 145, railTimeMin: 90 },
+      { code: 'LNZ', name: 'Linz (LNZ)', distanceKm: 125, railTimeMin: 75 },
+      { code: 'INN', name: 'Innsbruck (INN)', distanceKm: 165, railTimeMin: 110 },
+    ],
+  },
+  {
     code: 'ZRH',
     city: 'Zürich & Nordschweiz',
     name: 'Zürich (ZRH)',
@@ -1014,13 +1184,43 @@ export const DEPARTURE_HUBS: DepartureHub[] = [
     ],
   },
   {
-    code: 'VIE',
-    city: 'Wien & Ostösterreich',
-    name: 'Wien (VIE)',
+    code: 'BSL',
+    city: 'Basel / Mulhouse / Freiburg',
+    name: 'Basel-Mulhouse (BSL)',
     nearbyCodes: [
-      { code: 'BTS', name: 'Bratislava (BTS)', distanceKm: 62, railTimeMin: 55 },
-      { code: 'BRQ', name: 'Brünn (BRQ)', distanceKm: 135, railTimeMin: 90 },
-      { code: 'BUD', name: 'Budapest (BUD)', distanceKm: 240, railTimeMin: 145 },
+      { code: 'ZRH', name: 'Zürich (ZRH)', distanceKm: 85, railTimeMin: 60 },
+      { code: 'FKB', name: 'Karlsruhe/Baden (FKB)', distanceKm: 160, railTimeMin: 95 },
+      { code: 'STR', name: 'Stuttgart (STR)', distanceKm: 220, railTimeMin: 135 },
+    ],
+  },
+  {
+    code: 'GVA',
+    city: 'Genf & Westschweiz',
+    name: 'Genf (GVA)',
+    nearbyCodes: [
+      { code: 'BSL', name: 'Basel-Mulhouse (BSL)', distanceKm: 230, railTimeMin: 155 },
+      { code: 'ZRH', name: 'Zürich (ZRH)', distanceKm: 270, railTimeMin: 165 },
+      { code: 'LYS', name: 'Lyon (LYS)', distanceKm: 145, railTimeMin: 110 },
+    ],
+  },
+  {
+    code: 'LUX',
+    city: 'Luxemburg & Trier/Saarland',
+    name: 'Luxemburg (LUX)',
+    nearbyCodes: [
+      { code: 'HHN', name: 'Frankfurt-Hahn (HHN)', distanceKm: 110, railTimeMin: 80 },
+      { code: 'SCN', name: 'Saarbrücken (SCN)', distanceKm: 95, railTimeMin: 70 },
+      { code: 'CRL', name: 'Brüssel-Charleroi (CRL)', distanceKm: 175, railTimeMin: 120 },
+    ],
+  },
+  {
+    code: 'AMS',
+    city: 'Amsterdam & Grenzregion NRW/NDS',
+    name: 'Amsterdam (AMS)',
+    nearbyCodes: [
+      { code: 'EIN', name: 'Eindhoven (EIN)', distanceKm: 120, railTimeMin: 80 },
+      { code: 'NRN', name: 'Weeze (NRN)', distanceKm: 145, railTimeMin: 105 },
+      { code: 'DUS', name: 'Düsseldorf (DUS)', distanceKm: 210, railTimeMin: 130 },
     ],
   },
 ];
