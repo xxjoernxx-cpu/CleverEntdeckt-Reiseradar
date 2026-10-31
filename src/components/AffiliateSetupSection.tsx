@@ -920,34 +920,14 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
             {/* 1-Click Homepage Embed Code Generator (automatically includes user's affiliate parameters) */}
             {(() => {
               const baseAppUrl =
-                typeof window !== 'undefined' && window.location.origin
+                typeof window !== 'undefined' &&
+                window.location.origin &&
+                !window.location.origin.includes('run.app')
                   ? window.location.origin
-                  : 'https://ais-pre-kcnayrb45eutckxqz7vq7d-231109000256.europe-west3.run.app';
-              const params = new URLSearchParams();
-              params.set('view', 'public');
-              if (expediaUrlInput.trim()) params.set('expedia', expediaUrlInput.trim());
-              if (discoverCarsUrlInput.trim())
-                params.set('discovercars', discoverCarsUrlInput.trim());
-              if (check24UrlInput.trim()) params.set('check24', check24UrlInput.trim());
-              if (abInDenUrlaubUrlInput.trim())
-                params.set('abindenurlaub', abInDenUrlaubUrlInput.trim());
-              if (tripComUrlInput.trim()) params.set('tripcom', tripComUrlInput.trim());
-              if (snowTrexUrlInput.trim()) params.set('snowtrex', snowTrexUrlInput.trim());
-              if (bookingUrlInput.trim()) params.set('booking', bookingUrlInput.trim());
-              if (skyscannerUrlInput.trim()) params.set('skyscanner', skyscannerUrlInput.trim());
-              const validExtras = extraPartnersInput.filter(
-                (p) => p.name.trim() && p.url.trim()
-              );
-              if (validExtras.length > 0) {
-                params.set('extra', JSON.stringify(validExtras));
-              }
-              if (markerInput.trim()) params.set('marker', markerInput.trim());
-              if (bookingAidInput.trim()) params.set('aid', bookingAidInput.trim());
-              if (awinIdInput.trim()) params.set('awin', awinIdInput.trim());
+                  : 'https://cleverentdeckt-reiseradar.netlify.app';
+              const fullEmbedUrl = `${baseAppUrl}/?view=public`;
 
-              const fullEmbedUrl = `${baseAppUrl}/?${params.toString()}`;
-
-              const iframeCode = `<iframe\n  src="${fullEmbedUrl}"\n  width="100%"\n  height="1100"\n  style="border:0; border-radius:16px; width:100%; min-height:950px; overflow:hidden;"\n  loading="lazy"\n  allow="clipboard-write"\n  title="CleverEntdeckt, Sparflug & Reiseradar"\n></iframe>`;
+              const iframeCode = `<div style="width: 100%; max-width: 1400px; margin: 0 auto;">\n  <iframe\n    src="${fullEmbedUrl}"\n    width="100%"\n    height="1850"\n    style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; display: block;"\n    loading="lazy"\n    allow="clipboard-write"\n    title="CleverEntdeckt, Sparflug & Reiseradar"\n  ></iframe>\n</div>`;
 
               return (
                 <div className="bg-slate-900 text-white rounded-xl p-4 space-y-2.5">
