@@ -599,7 +599,7 @@ export default function App() {
                 Unabhängige Tiefpreis-Suchmaschine <span aria-hidden="true">·</span> Multi-Airport-Radius <span aria-hidden="true">·</span> 2× One-Way Split-Ticketing <span aria-hidden="true">·</span> Live-Währungsumrechnung ({userCurrency})
               </p>
               <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-slate-900 mt-2 leading-[1.15] text-balance">
-                Finden Sie garantiert die günstigste Reise — egal wohin oder zu Ihrem Wunschziel.
+                Finden Sie günstige Reisen, egal wohin oder zu Ihrem Traumziel.
               </h1>
               <p className="text-base text-slate-600 mt-3 leading-relaxed">
                 Statt starrer Einzelflüge kombiniert der Algorithmus automatisch Nachbarflughäfen
