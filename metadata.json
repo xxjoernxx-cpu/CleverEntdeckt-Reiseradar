@@ -1,0 +1,6 @@
+{
+  "name": "Sparflug & ReiseRadar",
+  "description": "Intelligente Tiefpreis-Reisesuche mit flexiblem Preiskalender, Multi-Airport-Optimierung, Split-Ticketing-Rechner und Überall-Entdecker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
