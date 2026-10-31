@@ -226,35 +226,82 @@ export interface AffiliatePartnerConfig {
   useExpediaForFlightsIfNoSkyscanner?: boolean; // Automatically monetize flight buttons with user's Expedia link until Skyscanner is added
 }
 
+export const DEFAULT_EXTRA_PARTNERS: CustomAffiliatePartner[] = [
+  {
+    id: 'asi-reisen-awin-126961',
+    name: 'ASI Reisen (Rund-, Berg- & Aktivreisen)',
+    url: 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525',
+    category: 'package',
+  },
+  {
+    id: 'klook-tp-771810',
+    name: 'Klook Erlebnisse & Transfers',
+    url: 'https://tp.media/r?campaign_id=137&marker=771810&p=4110&trs=568370&u=https%3A%2F%2Fklook.com',
+    category: 'package',
+  },
+];
+
 export const DEFAULT_AFFILIATE_CONFIG: AffiliatePartnerConfig = {
-  travelpayoutsMarker: '',
+  travelpayoutsMarker: '771810', // User's official Travelpayouts Marker-ID (771810 / trs=568370) pre-configured
   bookingAid: '',
-  awinPublisherId: '',
-  customExpediaUrl: '',
-  customDiscoverCarsUrl: '',
-  customCheck24Url: '',
+  awinPublisherId: '3034525', // User's official Awin Publisher ID (r=3034525) pre-configured
+  customExpediaUrl: '1100l6tjov', // User's official Expedia Partnerize camref (1100l6tjov) pre-configured
+  customDiscoverCarsUrl: 'https://www.discovercars.com/de?a_aid=CleverEntdeckt&a_bid=61a4ac81', // User's official DiscoverCars Affiliate Link pre-configured
+  customCheck24Url: '1176801', // User's official Check24 Partner/Widget ID 1176801 pre-configured
   customBookingUrl: '',
   customSkyscannerUrl: '',
-  customAbInDenUrlaubUrl: '',
-  customTripComUrl: '',
-  customSnowTrexUrl: '',
-  extraPartners: [],
+  customAbInDenUrlaubUrl: 'https://www.awin1.com/cread.php?s=2307983&v=9369&q=339342&r=3034525', // User's official Ab in den Urlaub Awin Link pre-configured
+  customTripComUrl: 'https://de.trip.com/?Allianceid=10486295&SID=330669011&locale=de_de', // User's official Trip.com Affiliate Link (Allianceid=10486295, SID=330669011) pre-configured
+  customSnowTrexUrl: 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525', // User's official ASI Reisen Berg- & Aktivreisen Awin Link pre-configured
+  extraPartners: DEFAULT_EXTRA_PARTNERS,
   useExpediaForFlightsIfNoSkyscanner: true,
 };
 
 export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
   let baseConfig: AffiliatePartnerConfig = {
     ...DEFAULT_AFFILIATE_CONFIG,
-    extraPartners: [],
+    extraPartners: DEFAULT_EXTRA_PARTNERS,
   };
   try {
     const raw = localStorage.getItem('sparflug_affiliate_config');
     if (raw) {
       const parsed = JSON.parse(raw);
+      // Merge saved extraPartners with DEFAULT_EXTRA_PARTNERS so new pre-configured partners (ASI Reisen, Klook) are always included
+      const savedExtras: CustomAffiliatePartner[] = Array.isArray(parsed?.extraPartners)
+        ? parsed.extraPartners
+        : [];
+      const mergedExtras = [...DEFAULT_EXTRA_PARTNERS];
+      savedExtras.forEach((item) => {
+        if (
+          item &&
+          item.url &&
+          !mergedExtras.some((def) => def.id === item.id || def.url === item.url)
+        ) {
+          mergedExtras.push(item);
+        }
+      });
+
       baseConfig = {
         ...baseConfig,
         ...parsed,
-        extraPartners: Array.isArray(parsed?.extraPartners) ? parsed.extraPartners : [],
+        // Keep default pre-configured partner IDs if user had not entered custom values yet
+        travelpayoutsMarker: parsed?.travelpayoutsMarker?.trim() ? parsed.travelpayoutsMarker : '771810',
+        awinPublisherId: parsed?.awinPublisherId?.trim() ? parsed.awinPublisherId : '3034525',
+        customExpediaUrl: parsed?.customExpediaUrl?.trim() ? parsed.customExpediaUrl : '1100l6tjov',
+        customDiscoverCarsUrl: parsed?.customDiscoverCarsUrl?.trim()
+          ? parsed.customDiscoverCarsUrl
+          : 'https://www.discovercars.com/de?a_aid=CleverEntdeckt&a_bid=61a4ac81',
+        customCheck24Url: parsed?.customCheck24Url?.trim() ? parsed.customCheck24Url : '1176801',
+        customAbInDenUrlaubUrl: parsed?.customAbInDenUrlaubUrl?.trim()
+          ? parsed.customAbInDenUrlaubUrl
+          : 'https://www.awin1.com/cread.php?s=2307983&v=9369&q=339342&r=3034525',
+        customTripComUrl: parsed?.customTripComUrl?.trim()
+          ? parsed.customTripComUrl
+          : 'https://de.trip.com/?Allianceid=10486295&SID=330669011&locale=de_de',
+        customSnowTrexUrl: parsed?.customSnowTrexUrl?.trim()
+          ? parsed.customSnowTrexUrl
+          : 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525',
+        extraPartners: mergedExtras,
       };
     }
   } catch {
@@ -295,9 +342,11 @@ export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
 }
 
 /**
- * Combines a user's existing affiliate link (or partner code) with the dynamic destination/date deep link.
- * - If the user pasted a tracking redirect shortlink (e.g., prf.hn, a.check24.net, tp.media, bit.ly), keeps their exact tracking URL intact.
- * - If the user pasted a provider URL with tracking query params (e.g. https://www.discovercars.com/de?a_aid=joern), merges their tracking parameters into the deep search URL so both commission tracking and destination prefill work.
+ * Combines a user's existing affiliate link (or partner code / HTML widget snippet) with the dynamic destination/date deep link.
+ * - If the user pasted an HTML widget snippet (e.g. Check24 <script src="https://files.check24.net/widgets/auto/1176801/..."> or Expedia data-camref="1100l6tjov"), extracts the partner ID automatically.
+ * - If the user pasted an HTML <a href="..."> snippet (e.g. Trip.com with &amp; entities), extracts the href and decodes &amp; -> & automatically.
+ * - If the user pasted a Travelpayouts tp.media/r redirect link with u=..., updates u= to the deep search URL when on the same provider domain so both tracking (marker/trs/campaign_id) and destination search work.
+ * - If the user pasted a provider URL with tracking query params (e.g. https://de.trip.com/?Allianceid=10486295&SID=330669011), merges their tracking parameters into the deep search URL so both commission tracking and destination prefill work.
  * - If the user pasted a plain partner ID/code, appends it via fallbackParamName.
  */
 function resolveCustomAffiliateUrl(
@@ -306,8 +355,40 @@ function resolveCustomAffiliateUrl(
   providerDomainKeyword: string,
   fallbackParamName: string
 ): string {
-  const input = (rawCustomInput || '').trim();
+  let input = (rawCustomInput || '').trim();
   if (!input) return defaultDeepUrl;
+
+  // Case 0a: User pasted a Check24 Widget HTML/Script code -> extract Partner ID (e.g. 1176801)
+  const c24WidgetMatch = input.match(/widgets\/auto\/(\d+)/i);
+  if (c24WidgetMatch && c24WidgetMatch[1]) {
+    const sep = defaultDeepUrl.includes('?') ? '&' : '?';
+    return `${defaultDeepUrl}${sep}${fallbackParamName}=${encodeURIComponent(c24WidgetMatch[1])}`;
+  }
+
+  // Case 0b: User pasted an Expedia Group Banner HTML code (data-camref="1100l6tjov"), Partnerize prf.hn/click/camref:..., or plain Expedia camref ID
+  const expediaCamrefMatch =
+    input.match(/data-camref=["']([^"']+)["']/i) ||
+    input.match(/camref[:=]([a-zA-Z0-9_-]+)/i) ||
+    (providerDomainKeyword.toLowerCase() === 'expedia' && /^[a-z0-9]{7,15}$/i.test(input)
+      ? [input, input]
+      : null);
+  if (expediaCamrefMatch && expediaCamrefMatch[1]) {
+    const camref = expediaCamrefMatch[1].trim();
+    const sep = defaultDeepUrl.includes('?') ? '&' : '?';
+    const deepWithParams = `${defaultDeepUrl}${sep}affcid=DE.DIRECT.PZ.${encodeURIComponent(camref)}&camref=${encodeURIComponent(camref)}`;
+    return `https://prf.hn/click/camref:${encodeURIComponent(camref)}/destination:${encodeURIComponent(deepWithParams)}`;
+  }
+
+  // If user pasted an HTML <a href="..."> or <iframe src="..."> tag, extract the URL
+  if (input.includes('<')) {
+    const hrefMatch = input.match(/(?:href|src)=["']([^"']+)["']/i);
+    if (hrefMatch && hrefMatch[1]) {
+      input = hrefMatch[1].trim();
+    }
+  }
+
+  // Decode HTML entities like &amp; -> & so URLSearchParams parses Allianceid, SID, etc. cleanly
+  input = input.replace(/&amp;/gi, '&');
 
   // Case 1: User entered a plain ID/code (not a URL)
   if (!input.includes('http') && !input.includes('/') && !input.includes('.')) {
@@ -321,20 +402,53 @@ function resolveCustomAffiliateUrl(
     const parsedCustom = new URL(normalizedUrl);
     const parsedDefault = new URL(defaultDeepUrl);
 
-    // Case 2: Awin cread.php wrapper without ued destination -> attach deep search URL automatically
-    if (parsedCustom.hostname.includes('awin1.com') && !parsedCustom.searchParams.has('ued')) {
-      parsedCustom.searchParams.set('ued', defaultDeepUrl);
+    // Case 2a: Awin cread.php wrapper without ued destination -> attach deep search URL automatically when target merchant matches defaultDeepUrl domain
+    if (
+      parsedCustom.hostname.includes('awin1.com') &&
+      !parsedCustom.searchParams.has('ued') &&
+      !defaultDeepUrl.includes('awin1.com')
+    ) {
+      const awinMerchantId = parsedCustom.searchParams.get('v') || parsedCustom.searchParams.get('awinmid') || '';
+      if (
+        (awinMerchantId === '9369' && defaultDeepUrl.includes('ab-in-den-urlaub')) ||
+        parsedCustom.searchParams.has('awinmid')
+      ) {
+        parsedCustom.searchParams.set('ued', defaultDeepUrl);
+      }
       return parsedCustom.toString();
     }
 
-    // Case 3: Direct provider link (e.g., expedia.de/?affcid=..., discovercars.com/de?a_aid=...)
+    // Case 2b: Travelpayouts tp.media/r wrapper with u=... -> if defaultDeepUrl is a different deep search page on the same target brand, inject defaultDeepUrl into u=
+    if (parsedCustom.hostname.includes('tp.media') && parsedCustom.searchParams.has('u')) {
+      const currentTargetU = parsedCustom.searchParams.get('u') || '';
+      if (
+        defaultDeepUrl !== normalizedUrl &&
+        !defaultDeepUrl.includes('tp.media') &&
+        currentTargetU &&
+        parsedDefault.hostname
+          .replace(/^www\./i, '')
+          .toLowerCase()
+          .includes(
+            new URL(currentTargetU.startsWith('http') ? currentTargetU : `https://${currentTargetU}`).hostname
+              .replace(/^www\./i, '')
+              .toLowerCase()
+          )
+      ) {
+        parsedCustom.searchParams.set('u', defaultDeepUrl);
+      }
+      return parsedCustom.toString();
+    }
+
+    // Case 3: Direct provider link (e.g., de.trip.com/?Allianceid=10486295&SID=330669011, expedia.de/?affcid=..., discovercars.com/de?a_aid=...)
     // If it has tracking query parameters on the same provider domain, copy all custom tracking params into the deep search URL
     if (
       parsedCustom.hostname.toLowerCase().includes(providerDomainKeyword.toLowerCase()) &&
       Array.from(parsedCustom.searchParams.keys()).length > 0
     ) {
       parsedCustom.searchParams.forEach((val, key) => {
-        parsedDefault.searchParams.set(key, val);
+        if (val !== '') {
+          parsedDefault.searchParams.set(key, val);
+        }
       });
       return parsedDefault.toString();
     }
@@ -473,13 +587,18 @@ export function buildProviderBookingLinks(params: {
   // Priority E: Standard Skyscanner search
   const baseSkyscannerUrl = `https://www.skyscanner.de/transport/fluge/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${skyOut}/${skyIn}/?adultsv2=${travelers}&cabinclass=economy&currency=${userCurrency}`;
   const baseAviasalesUrl = `https://www.aviasales.com/search/${originCode.toUpperCase()}${aviaOut}${destCode.toUpperCase()}${aviaIn}${travelers}?currency=${userCurrency.toLowerCase()}${marker ? `&marker=${encodeURIComponent(marker)}` : ''}`;
+  const baseKiwiFlightUrl = `https://www.kiwi.com/de/search/results/${originCode.toLowerCase()}-${destCode.toLowerCase()}/${departureDateStr}/${returnDateStr}?adults=${travelers}`;
   const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?trip=roundtrip&leg1=from:${encodeURIComponent(originCode)},to:${encodeURIComponent(destCode)},departure:${departureDateStr}TANYT&leg2=from:${encodeURIComponent(destCode)},to:${encodeURIComponent(originCode)},departure:${returnDateStr}TANYT&passengers=adults:${travelers}&mode=search`;
 
   const customFlightInput = (aff.customSkyscannerUrl || '').trim();
   const skyscannerFlightUrl = customFlightInput
     ? resolveCustomAffiliateUrl(
         customFlightInput,
-        customFlightInput.toLowerCase().includes('aviasales') ? baseAviasalesUrl : baseSkyscannerUrl,
+        customFlightInput.toLowerCase().includes('aviasales')
+          ? baseAviasalesUrl
+          : customFlightInput.toLowerCase().includes('kiwi')
+          ? baseKiwiFlightUrl
+          : baseSkyscannerUrl,
         customFlightInput.toLowerCase().includes('aviasales')
           ? 'aviasales'
           : customFlightInput.toLowerCase().includes('kiwi')
@@ -701,9 +820,15 @@ export function buildProviderBookingLinks(params: {
 
   // Include all user-added extra affiliate partners ("usw.")
   activeExtraPartners.forEach((partner, idx) => {
+    const pLower = `${partner.name} ${partner.url}`.toLowerCase();
+    const extraDeepDefault = pLower.includes('klook')
+      ? `https://www.klook.com/de/search/result/?query=${encodeURIComponent(cleanCity)}`
+      : pLower.includes('kiwi')
+      ? baseKiwiFlightUrl
+      : partner.url;
     const resolvedExtraUrl = resolveCustomAffiliateUrl(
       partner.url,
-      partner.url,
+      extraDeepDefault,
       partner.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
       'partnerid'
     );

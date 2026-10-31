@@ -343,14 +343,14 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   >
                     Ihr Expedia Affiliate-Link (Komplettreisen, Hotels & Flug-Überbrückung)
                   </label>
-                  <span className="text-[11px] font-mono text-emerald-700">
-                    Ersetzt alle „Expedia“-Buttons (+ optional Flug-Buttons)
+                  <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                    ✓ Expedia Partnerize (camref: 1100l6tjov) fest hinterlegt & aktiv
                   </span>
                 </div>
                 <input
                   id="custom-expedia-url"
                   type="text"
-                  placeholder="z.B. https://prf.hn/click/camref:... oder https://www.expedia.de/?affcid=..."
+                  placeholder="z.B. 1100l6tjov, https://prf.hn/click/camref:1100l6tjov oder Expedia Banner-Code"
                   value={expediaUrlInput}
                   onChange={(e) => setExpediaUrlInput(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -365,14 +365,14 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   >
                     Ihr Check24 Affiliate-Link (Pauschalreisen & Hotelvergleich)
                   </label>
-                  <span className="text-[11px] font-mono text-emerald-700">
-                    Nimmt automatisch am Bestpreis-Vergleich teil
+                  <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                    ✓ Check24 Partner-ID 1176801 fest hinterlegt & aktiv
                   </span>
                 </div>
                 <input
                   id="custom-check24-url"
                   type="text"
-                  placeholder="z.B. https://a.check24.net/misc/click.php?... oder https://urlaub.check24.de/..."
+                  placeholder="z.B. 1176801 oder Check24 Widget-Code"
                   value={check24UrlInput}
                   onChange={(e) => setCheck24UrlInput(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -387,14 +387,14 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   >
                     Ihr „Ab in den Urlaub“ Affiliate-Link (Pauschalreisen & Last Minute)
                   </label>
-                  <span className="text-[11px] font-mono text-emerald-700">
-                    Ideal für Strand-, Familien- & Last-Minute-Reisen
+                  <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                    ✓ Awin-Link (Publisher-ID 3034525) fest hinterlegt & aktiv
                   </span>
                 </div>
                 <input
                   id="custom-abindenurlaub-url"
                   type="text"
-                  placeholder="z.B. https://www.awin1.com/cread.php?... oder Ihr Ab-in-den-Urlaub Partnerlink"
+                  placeholder="z.B. https://www.awin1.com/cread.php?s=2307983&v=9369&q=339342&r=3034525"
                   value={abInDenUrlaubUrlInput}
                   onChange={(e) => setAbInDenUrlaubUrlInput(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -410,11 +410,14 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                     >
                       Ihr Trip.com Affiliate-Link (Flüge & Hotels)
                     </label>
+                    <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                      ✓ Allianceid 10486295 aktiv
+                    </span>
                   </div>
                   <input
                     id="custom-tripcom-url"
                     type="text"
-                    placeholder="z.B. https://tp.media/r?... oder de.trip.com/?allianceid=..."
+                    placeholder="z.B. https://de.trip.com/?Allianceid=10486295&SID=330669011&locale=de_de oder <a href=...>"
                     value={tripComUrlInput}
                     onChange={(e) => setTripComUrlInput(e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -427,13 +430,16 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                       htmlFor="custom-snowtrex-url"
                       className="text-xs font-semibold text-slate-800"
                     >
-                      Ihr SnowTrex Affiliate-Link (Ski- & Winterreisen)
+                      Ihr ASI Reisen / Berg- & Winter-Link
                     </label>
+                    <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                      ✓ ASI Reisen (v=126961) aktiv
+                    </span>
                   </div>
                   <input
                     id="custom-snowtrex-url"
                     type="text"
-                    placeholder="z.B. Ihr SnowTrex Partnerlink (inkl. Skipass-Deals)"
+                    placeholder="z.B. https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525"
                     value={snowTrexUrlInput}
                     onChange={(e) => setSnowTrexUrlInput(e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -449,14 +455,14 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   >
                     Ihr DiscoverCars Affiliate-Link (Mietwagen ab Zielflughafen)
                   </label>
-                  <span className="text-[11px] font-mono text-emerald-700">
-                    Ersetzt alle „DiscoverCars Mietwagen“-Buttons (~30–50 % Provision)
+                  <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                    ✓ DiscoverCars (a_aid: CleverEntdeckt / a_bid: 61a4ac81) fest hinterlegt & aktiv
                   </span>
                 </div>
                 <input
                   id="custom-discovercars-url"
                   type="text"
-                  placeholder="z.B. https://www.discovercars.com/de?a_aid=IhrName oder Partner-Kurzlink"
+                  placeholder="z.B. https://www.discovercars.com/de?a_aid=CleverEntdeckt&a_bid=61a4ac81"
                   value={discoverCarsUrlInput}
                   onChange={(e) => setDiscoverCarsUrlInput(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"

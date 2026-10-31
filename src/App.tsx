@@ -38,6 +38,7 @@ import { RouteOptimizerSection } from './components/RouteOptimizerSection';
 import { CurrencyConverterPanel } from './components/CurrencyConverterPanel';
 import { AffiliateSetupSection } from './components/AffiliateSetupSection';
 import { PWAInstallButton } from './components/PWAInstallButton';
+import { Check24PackageWidget } from './components/Check24PackageWidget';
 
 type SortStrategy = 'lowest_total' | 'biggest_discount' | 'warmest_weather' | 'cheapest_local';
 
@@ -1180,6 +1181,16 @@ export default function App() {
                 })}
               </div>
             </div>
+
+            {/* Official CHECK24 Package Search Widget (Partner ID 1176801), Expedia Banner (camref 1100l6tjov) & DiscoverCars Banner (a_aid CleverEntdeckt) */}
+            <Check24PackageWidget
+              partnerId={affiliateConfig.customCheck24Url || '1176801'}
+              fallbackDirectUrl={searchPreviewLinks.check24HolidayUrl}
+              expediaCamref={affiliateConfig.customExpediaUrl || '1100l6tjov'}
+              expediaDirectUrl={searchPreviewLinks.expediaPackageUrl}
+              discoverCarsDirectUrl={searchPreviewLinks.rentalCarUrl}
+              destinationCity={activeDestination.city}
+            />
           </div>
         </section>
 
