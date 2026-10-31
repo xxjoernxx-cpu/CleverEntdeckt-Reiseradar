@@ -374,6 +374,18 @@ export const DEFAULT_EXTRA_PARTNERS: CustomAffiliatePartner[] = [
     url: 'https://tp.media/r?campaign_id=137&marker=771810&p=4110&trs=568370&u=https%3A%2F%2Fklook.com',
     category: 'package',
   },
+  {
+    id: 'tuicamper-awin-11934',
+    name: 'TUI Camper (Wohnmobile & Camper)',
+    url: 'https://www.awin1.com/cread.php?awinmid=11934&awinaffid=3034525&ued=https%3A%2F%2Fwww.tuicamper.com%2F',
+    category: 'extra',
+  },
+  {
+    id: 'camperdays-awin-52889',
+    name: 'CamperDays (Wohnmobil-Preisvergleich)',
+    url: 'https://www.awin1.com/cread.php?awinmid=52889&awinaffid=3034525&ued=https%3A%2F%2Fwww.camperdays.de%2F',
+    category: 'extra',
+  },
 ];
 
 export const DEFAULT_AFFILIATE_CONFIG: AffiliatePartnerConfig = {
@@ -625,6 +637,8 @@ export interface ProviderBookingLinks {
   tripComUrl: string;
   snowTrexUrl: string;
   klookActivitiesUrl: string;
+  tuiCamperUrl: string;
+  camperDaysUrl: string;
   bahnTransferUrl: string;
   rentalCarUrl: string;
   esimDataUrl: string;
@@ -826,8 +840,32 @@ export function buildProviderBookingLinks(params: {
     'discovercars',
     'a_aid'
   );
+  // 10b. TUI Camper (Wohnmobile & Camper weltweit mieten via Awin awinmid=11934 & awinaffid=3034525)
+  const tuiCamperPartnerEntry = activeExtraPartners.find((p) =>
+    p.url.toLowerCase().includes('tuicamper') || p.url.includes('11934')
+  );
+  const tuiCamperUrl = resolveCustomAffiliateUrl(
+    tuiCamperPartnerEntry?.url ||
+      'https://www.awin1.com/cread.php?awinmid=11934&awinaffid=3034525&ued=https%3A%2F%2Fwww.tuicamper.com%2F',
+    'https://www.tuicamper.com/',
+    'tuicamper',
+    'awinaffid'
+  );
+
+  // 10c. CamperDays (Wohnmobil-Preisvergleich via Awin awinmid=52889 & awinaffid=3034525, cleaned of Bing utm params)
+  const camperDaysPartnerEntry = activeExtraPartners.find((p) =>
+    p.url.toLowerCase().includes('camperdays') || p.url.includes('52889')
+  );
+  const camperDaysUrl = resolveCustomAffiliateUrl(
+    camperDaysPartnerEntry?.url ||
+      'https://www.awin1.com/cread.php?awinmid=52889&awinaffid=3034525&ued=https%3A%2F%2Fwww.camperdays.de%2F',
+    'https://www.camperdays.de/',
+    'camperdays',
+    'awinaffid'
+  );
+
   const esimDataUrl = klookActivitiesUrl;
-  const flightCompensationUrl = snowTrexUrl;
+  const flightCompensationUrl = tuiCamperUrl;
 
   // 11. Smart Single-Button Best-Price Router ("1 Button zum günstigsten Anbieter inkl. aktivem Affiliate-Link")
   // Strictly uses ONLY the user's real affiliate partners
@@ -983,6 +1021,8 @@ export function buildProviderBookingLinks(params: {
     tripComUrl,
     snowTrexUrl,
     klookActivitiesUrl,
+    tuiCamperUrl,
+    camperDaysUrl,
     bahnTransferUrl,
     rentalCarUrl,
     esimDataUrl,

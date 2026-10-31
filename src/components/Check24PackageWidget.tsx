@@ -7,6 +7,8 @@ interface Check24PackageWidgetProps {
   expediaCamref?: string;
   expediaDirectUrl?: string;
   discoverCarsDirectUrl?: string;
+  tuiCamperDirectUrl?: string;
+  camperDaysDirectUrl?: string;
   destinationCity: string;
 }
 
@@ -16,6 +18,8 @@ export const Check24PackageWidget: React.FC<Check24PackageWidgetProps> = ({
   expediaCamref = '1100l6tjov',
   expediaDirectUrl,
   discoverCarsDirectUrl = 'https://www.discovercars.com/de?a_aid=CleverEntdeckt&a_bid=61a4ac81',
+  tuiCamperDirectUrl = 'https://www.awin1.com/cread.php?awinmid=11934&awinaffid=3034525&ued=https%3A%2F%2Fwww.tuicamper.com%2F',
+  camperDaysDirectUrl = 'https://www.awin1.com/cread.php?awinmid=52889&awinaffid=3034525&ued=https%3A%2F%2Fwww.camperdays.de%2F',
   destinationCity,
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
@@ -87,14 +91,14 @@ export const Check24PackageWidget: React.FC<Check24PackageWidgetProps> = ({
             <div className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-blue-600">
               <Sparkles className="w-3.5 h-3.5" />
               <span>
-                Offizielle Partner-Widgets aktiv · CHECK24 (#{cleanWidgetId}) · Expedia ({cleanExpediaCamref}) · DiscoverCars (CleverEntdeckt)
+                Offizielle Partner-Widgets aktiv · CHECK24 (#{cleanWidgetId}) · Expedia ({cleanExpediaCamref}) · DiscoverCars · TUI Camper & CamperDays
               </span>
             </div>
             <h3 className="text-lg font-bold text-slate-900 mt-0.5">
-              Direkte Pauschalreise-Suche (CHECK24), Expedia Deals & DiscoverCars Mietwagen
+              Direkte Pauschalreise-Suche (CHECK24), Expedia Deals, Mietwagen & Wohnmobile
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Ihre Besucher können hier direkt über Ihre offiziellen Partner-Widgets suchen & buchen – jede Buchung wird automatisch Ihrer CHECK24-ID <strong>{cleanWidgetId}</strong>, Ihrer Expedia-ID <strong>{cleanExpediaCamref}</strong> bzw. Ihrem DiscoverCars-Konto <strong>CleverEntdeckt</strong> gutgeschrieben.
+              Ihre Besucher können hier direkt über Ihre offiziellen Partner-Widgets suchen & buchen – jede Buchung wird automatisch Ihrer CHECK24-ID <strong>{cleanWidgetId}</strong>, Ihrer Expedia-ID <strong>{cleanExpediaCamref}</strong>, Ihrem DiscoverCars-Konto <strong>CleverEntdeckt</strong> bzw. Ihrer Awin-ID <strong>3034525</strong> (TUI Camper & CamperDays) gutgeschrieben.
             </p>
           </div>
 
@@ -126,6 +130,24 @@ export const Check24PackageWidget: React.FC<Check24PackageWidgetProps> = ({
               className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5"
             >
               <span>Mietwagen {cleanCity}</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <a
+              href={tuiCamperDirectUrl}
+              target="_blank"
+              rel="sponsored noopener noreferrer"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5"
+            >
+              <span>TUI Camper</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <a
+              href={camperDaysDirectUrl}
+              target="_blank"
+              rel="sponsored noopener noreferrer"
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5"
+            >
+              <span>CamperDays</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
             <button

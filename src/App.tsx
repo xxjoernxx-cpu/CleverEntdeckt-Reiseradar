@@ -1482,6 +1482,8 @@ export default function App() {
               expediaCamref={affiliateConfig.customExpediaUrl || '1100l6tjov'}
               expediaDirectUrl={searchPreviewLinks.expediaPackageUrl}
               discoverCarsDirectUrl={searchPreviewLinks.rentalCarUrl}
+              tuiCamperDirectUrl={searchPreviewLinks.tuiCamperUrl}
+              camperDaysDirectUrl={searchPreviewLinks.camperDaysUrl}
               destinationCity={activeDestination.city}
             />
           </div>
@@ -2172,6 +2174,24 @@ export default function App() {
                       className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
                     >
                       <span>DiscoverCars Mietwagen ({activeDestCalc.chosenRoute.outbound.destCode})</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                    <a
+                      href={modalLinks.tuiCamperUrl}
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
+                    >
+                      <span>TUI Camper (Wohnmobile & Camper)</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                    <a
+                      href={modalLinks.camperDaysUrl}
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-between transition-colors"
+                    >
+                      <span>CamperDays (Wohnmobil-Preisvergleich)</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     </a>
                   </div>
