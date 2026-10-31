@@ -498,7 +498,7 @@ export default function App() {
       originCode: calc.chosenRoute.outbound.originCode,
       destCode: dest.iata,
       destCity: dest.city,
-      hotelName: calc.chosenHotel.name,
+      hotelName: calc.cheapestHotel?.name || dest.city,
       carrierName: calc.chosenRoute.outbound.carrier,
       departureDateStr: calc.lowestDateStr,
       durationNights,
@@ -1516,7 +1516,7 @@ export default function App() {
                 04. Preis-Algorithmus & Nachweisbare Einsparungen
               </p>
               <h2 className="text-2xl font-bold tracking-tight text-slate-900 mt-1 text-balance">
-                Wie Sparflug & ReiseRadar systematisch bis zu 42 % unter Standard-Buchungsportalen bleibt
+                Wie CleverEntdeckt, Sparflug & Reiseradar systematisch bis zu 42 % unter Standard-Buchungsportalen bleibt
               </h2>
             </div>
 
