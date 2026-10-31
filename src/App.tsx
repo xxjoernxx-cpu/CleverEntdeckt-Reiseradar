@@ -1241,14 +1241,15 @@ export default function App() {
                           </h3>
                           <div className="mt-2 flex items-baseline justify-between">
                             <span className="text-xs text-slate-300">
-                              Flug + {durationNights} Nächte:
+                              Richtpreis ({durationNights} Nächte):
                             </span>
                             <span className="text-lg font-mono font-bold text-emerald-400 tabular-nums">
-                              {formatMoney(calc.totalPerPerson, userCurrency)} p.P.
+                              ab {formatMoney(calc.totalPerPerson, userCurrency)} p.P.
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
-                            {calc.cheapestHotel.name} ({calc.cheapestHotel.boardType})
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Flug ab {formatMoney(calc.flightTotalPP, userCurrency)} + Hotel ab{' '}
+                            {formatMoney(calc.hotelTotalPP, userCurrency)} · Freie Hotelwahl im Live-Vergleich
                           </p>
                         </div>
 
@@ -1257,19 +1258,30 @@ export default function App() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <a
-                            href={cardLinks.bestDealDirectUrl}
+                            href={cardLinks.expediaPackageUrl}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="sponsored noopener noreferrer"
                             className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
                           >
-                            <span>Direkt zu {cardLinks.bestDealProviderName}</span>
+                            <span>Hotels in {dest.city.split('&')[0].trim()} bei Expedia</span>
                             <ExternalLink className="w-3 h-3 shrink-0" />
                           </a>
-                          <div className="grid grid-cols-2 gap-1.5">
+                          <a
+                            href={cardLinks.expediaFlightUrl}
+                            target="_blank"
+                            rel="sponsored noopener noreferrer"
+                            className="w-full py-1.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
+                          >
+                            <span>
+                              Flüge ({calc.chosenRoute.outbound.originCode} ⇄ {dest.iata}) bei Expedia
+                            </span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                          <div className="grid grid-cols-3 gap-1.5">
                             <a
                               href={cardLinks.check24HolidayUrl}
                               target="_blank"
-                              rel="noopener noreferrer"
+                              rel="sponsored noopener noreferrer"
                               className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
                             >
                               CHECK24
@@ -1277,10 +1289,18 @@ export default function App() {
                             <a
                               href={cardLinks.abInDenUrlaubUrl}
                               target="_blank"
-                              rel="noopener noreferrer"
+                              rel="sponsored noopener noreferrer"
+                              className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors truncate"
+                            >
+                              Ab in d. Urlaub
+                            </a>
+                            <a
+                              href={cardLinks.tripComUrl}
+                              target="_blank"
+                              rel="sponsored noopener noreferrer"
                               className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
                             >
-                              Ab in den Urlaub
+                              Trip.com
                             </a>
                           </div>
                         </div>
@@ -1865,16 +1885,42 @@ export default function App() {
                             affiliateConfig,
                           });
                           return (
-                            <div className="pt-2.5 border-t border-slate-200/70">
+                            <div className="pt-2.5 border-t border-slate-200/70 space-y-1.5">
                               <a
-                                href={cardLinks.bestDealDirectUrl}
+                                href={cardLinks.expediaPackageUrl}
                                 target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                                rel="sponsored noopener noreferrer"
+                                className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
                               >
-                                <span>Zum günstigsten Angebot ({cardLinks.bestDealProviderName})</span>
+                                <span>Hotels in {dest.city.split('&')[0].trim()} bei Expedia</span>
                                 <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                               </a>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                <a
+                                  href={cardLinks.expediaFlightUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="py-1.5 px-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-semibold rounded-md text-center transition-colors truncate"
+                                >
+                                  Expedia Flüge
+                                </a>
+                                <a
+                                  href={cardLinks.check24HolidayUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-md text-center transition-colors truncate"
+                                >
+                                  CHECK24
+                                </a>
+                                <a
+                                  href={cardLinks.tripComUrl}
+                                  target="_blank"
+                                  rel="sponsored noopener noreferrer"
+                                  className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-semibold rounded-md text-center transition-colors truncate"
+                                >
+                                  Trip.com
+                                </a>
+                              </div>
                             </div>
                           );
                         })()}

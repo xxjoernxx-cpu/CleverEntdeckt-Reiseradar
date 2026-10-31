@@ -520,6 +520,8 @@ function resolveCustomAffiliateUrl(
   }
 
   // Case 0b: User pasted an Expedia Group Banner HTML code (data-camref="1100l6tjov"), Partnerize prf.hn/click/camref:..., or plain Expedia camref ID
+  // Uses Expedia Group's official Travel Creator deep-link endpoint (/affiliate?siteid=6&landingPage=...&camref=...&creativeref=1101l87346)
+  // so Expedia.de opens the exact destination & dates search results instead of redirecting to the generic homepage.
   const expediaCamrefMatch =
     input.match(/data-camref=["']([^"']+)["']/i) ||
     input.match(/camref[:=]([a-zA-Z0-9_-]+)/i) ||
@@ -528,9 +530,12 @@ function resolveCustomAffiliateUrl(
       : null);
   if (expediaCamrefMatch && expediaCamrefMatch[1]) {
     const camref = expediaCamrefMatch[1].trim();
+    const hasSiteId = defaultDeepUrl.includes('siteid=');
     const sep = defaultDeepUrl.includes('?') ? '&' : '?';
-    const deepWithParams = `${defaultDeepUrl}${sep}affcid=DE.DIRECT.PZ.${encodeURIComponent(camref)}&camref=${encodeURIComponent(camref)}`;
-    return `https://prf.hn/click/camref:${encodeURIComponent(camref)}/destination:${encodeURIComponent(deepWithParams)}`;
+    const deepWithSiteId = hasSiteId
+      ? defaultDeepUrl
+      : `${defaultDeepUrl}${sep}siteid=6&langid=1031`;
+    return `https://www.expedia.de/affiliate?siteid=6&landingPage=${encodeURIComponent(deepWithSiteId)}&camref=${encodeURIComponent(camref)}&creativeref=1101l87346`;
   }
 
   // If user pasted an HTML <a href="..."> or <iframe src="..."> tag, extract the URL
@@ -556,17 +561,13 @@ function resolveCustomAffiliateUrl(
     const parsedCustom = new URL(normalizedUrl);
     const parsedDefault = new URL(defaultDeepUrl);
 
-    // Case 2a: Awin cread.php wrapper without ued destination -> attach deep search URL automatically when target merchant matches defaultDeepUrl domain
+    // Case 2a: Awin cread.php wrapper: only attach ued when awinmid is used (deep-link format), never overwrite banner creatives (s=...&v=9369&q=...)
     if (
       parsedCustom.hostname.includes('awin1.com') &&
       !parsedCustom.searchParams.has('ued') &&
       !defaultDeepUrl.includes('awin1.com')
     ) {
-      const awinMerchantId = parsedCustom.searchParams.get('v') || parsedCustom.searchParams.get('awinmid') || '';
-      if (
-        (awinMerchantId === '9369' && defaultDeepUrl.includes('ab-in-den-urlaub')) ||
-        parsedCustom.searchParams.has('awinmid')
-      ) {
+      if (parsedCustom.searchParams.has('awinmid')) {
         parsedCustom.searchParams.set('ued', defaultDeepUrl);
       }
       return parsedCustom.toString();
@@ -718,11 +719,16 @@ export function buildProviderBookingLinks(params: {
   const aidSuffix = aid ? `&aid=${encodeURIComponent(aid)}` : '';
   const awinSuffix = awin ? `&awc=${encodeURIComponent(awin)}` : marker ? `&utm_term=${encodeURIComponent(marker)}` : '';
 
-  // Format DDMM for Aviasales
+  // Format DDMM for Aviasales & DD.MM.YYYY for Expedia.de
   const outParts = departureDateStr.split('-');
   const inParts = returnDateStr.split('-');
   const aviaOut = outParts.length === 3 ? `${outParts[2]}${outParts[1]}` : '1711';
   const aviaIn = inParts.length === 3 ? `${inParts[2]}${inParts[1]}` : '2111';
+  const deOutDate =
+    outParts.length === 3 ? `${outParts[2]}.${outParts[1]}.${outParts[0]}` : '17.11.2026';
+  const deInDate =
+    inParts.length === 3 ? `${inParts[2]}.${inParts[1]}.${inParts[0]}` : '21.11.2026';
+  const rooms = Math.max(1, Math.ceil(travelers / 2));
 
   // Trip.com Deep Link (Flights + Hotels)
   const hasDirectTripCom = Boolean(aff.customTripComUrl?.trim());
@@ -734,8 +740,11 @@ export function buildProviderBookingLinks(params: {
     'allianceid'
   );
 
-  // Expedia Flight Search Deep Link (via Partnerize camref:1100l6tjov)
-  const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?trip=roundtrip&leg1=from:${encodeURIComponent(originCode)},to:${encodeURIComponent(destCode)},departure:${departureDateStr}TANYT&leg2=from:${encodeURIComponent(destCode)},to:${encodeURIComponent(originCode)},departure:${returnDateStr}TANYT&passengers=adults:${travelers}&mode=search`;
+  // Expedia Official German Flight Search Deep Link (via Partnerize camref:1100l6tjov & creativeref:1101l87346)
+  const expediaLeg1 = `from:${originCode},to:${destCode},departure:${deOutDate}TANYT`;
+  const expediaLeg2 = `from:${destCode},to:${originCode},departure:${deInDate}TANYT`;
+  const expediaPassengers = `children:0,adults:${travelers},seniors:0,infantinlap:Y`;
+  const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?flight-type=on&mode=search&trip=roundtrip&leg1=${encodeURIComponent(expediaLeg1)}&leg2=${encodeURIComponent(expediaLeg2)}&fromDate=${encodeURIComponent(deOutDate)}&toDate=${encodeURIComponent(deInDate)}&d1=${departureDateStr}&d2=${returnDateStr}&passengers=${encodeURIComponent(expediaPassengers)}&options=${encodeURIComponent('cabinclass:economy')}&siteid=6&langid=1031`;
   const expediaFlightUrl = resolveCustomAffiliateUrl(
     aff.customExpediaUrl,
     baseExpediaFlightUrl,
@@ -784,9 +793,9 @@ export function buildProviderBookingLinks(params: {
   const googleFlightsUrl = tripComUrl;
   const airlineDirectUrl = tripComUrl;
 
-  // 5. Expedia Flight + Hotel Package search (Direct Expedia Link has 100% priority)
+  // 5. Expedia Official German Hotel & Stays Search (with d1, d2, startDate, endDate, rooms, adults, siteid=6, langid=1031)
   const hasDirectExpedia = Boolean(aff.customExpediaUrl?.trim());
-  const baseExpediaUrl = `https://www.expedia.de/Hotel-Search?destination=${encodeURIComponent(cleanCity)}&startDate=${departureDateStr}&endDate=${returnDateStr}&adults=${travelers}${hasDirectExpedia ? '' : markerSuffix}`;
+  const baseExpediaUrl = `https://www.expedia.de/Hotel-Search?destination=${encodeURIComponent(cleanCity)}&startDate=${departureDateStr}&endDate=${returnDateStr}&d1=${departureDateStr}&d2=${returnDateStr}&rooms=${rooms}&adults=${travelers}&siteid=6&langid=1031${hasDirectExpedia ? '' : markerSuffix}`;
   const expediaPackageUrl = resolveCustomAffiliateUrl(
     aff.customExpediaUrl,
     baseExpediaUrl,
@@ -795,8 +804,7 @@ export function buildProviderBookingLinks(params: {
   );
 
   // 6. Booking.com (Only if user explicitly configured a Booking.com link/AID; otherwise falls back to Expedia Hotel partner link)
-  const rooms = Math.max(1, Math.ceil(travelers / 2));
-  const bookingSearchQuery = encodeURIComponent(`${hotelName} ${cleanCity}`);
+  const bookingSearchQuery = encodeURIComponent(`${cleanCity}`);
   const hasDirectBooking = Boolean(aff.customBookingUrl?.trim() || aid);
   const baseBookingHotelUrl = `https://www.booking.com/searchresults.de.html?ss=${bookingSearchQuery}&checkin=${departureDateStr}&checkout=${returnDateStr}&group_adults=${travelers}&no_rooms=${rooms}&selected_currency=${userCurrency}${aidSuffix}`;
   const bookingHotelUrl = hasDirectBooking
@@ -807,7 +815,7 @@ export function buildProviderBookingLinks(params: {
 
   // 8. Check24 Pauschalreise comparison (Direct Check24 Link has 100% priority)
   const hasDirectCheck24 = Boolean(aff.customCheck24Url?.trim());
-  const baseCheck24Url = `https://urlaub.check24.de/suche/hotel?search=${encodeURIComponent(cleanCity)}&departureDate=${departureDateStr}&returnDate=${returnDateStr}&adultCount=${travelers}${hasDirectCheck24 ? '' : awinSuffix}`;
+  const baseCheck24Url = `https://urlaub.check24.de/suche/hotel?search=${encodeURIComponent(cleanCity)}&airport=${encodeURIComponent(originCode)}&transportType=flight&departureDate=${departureDateStr}&returnDate=${returnDateStr}&adultCount=${travelers}${hasDirectCheck24 ? '' : awinSuffix}`;
   const check24HolidayUrl = resolveCustomAffiliateUrl(
     aff.customCheck24Url,
     baseCheck24Url,
@@ -817,7 +825,7 @@ export function buildProviderBookingLinks(params: {
 
   // 8b. Ab in den Urlaub Pauschalreise & Last-Minute Deep Link
   const hasDirectAbInDenUrlaub = Boolean(aff.customAbInDenUrlaubUrl?.trim());
-  const baseAbInDenUrlaubUrl = `https://www.ab-in-den-urlaub.de/suche?search=${encodeURIComponent(cleanCity)}&depDate=${departureDateStr}&retDate=${returnDateStr}&adults=${travelers}`;
+  const baseAbInDenUrlaubUrl = `https://www.ab-in-den-urlaub.de/`;
   const abInDenUrlaubUrl = resolveCustomAffiliateUrl(
     aff.customAbInDenUrlaubUrl,
     baseAbInDenUrlaubUrl,
@@ -3135,14 +3143,14 @@ const KNOWN_GLOBAL_DESTINATIONS: Record<
     country: 'Thailand',
     iata: 'BKK',
     regionTag: 'Fernreise-Budget',
-    baseFlight: 245,
-    baseHotel: 34,
+    baseFlight: 540,
+    baseHotel: 66,
     durationMin: 640,
     temp: 30,
     mealEur: 4.5,
     transitEur: 3.2,
     lcc: 'Scoot / Norse',
-    legacy: 'Thai Airways',
+    legacy: 'Thai Airways / Lufthansa',
     currency: 'USD',
     fxTip: 'Airport Rail Link vom Flughafen Suvarnabhumi ins Zentrum Phaya Thai kostet nur 45 Baht (ca. 1,20 €).',
   },
@@ -3151,8 +3159,8 @@ const KNOWN_GLOBAL_DESTINATIONS: Record<
     country: 'USA',
     iata: 'JFK',
     regionTag: 'Fernreise-Budget',
-    baseFlight: 215,
-    baseHotel: 98,
+    baseFlight: 420,
+    baseHotel: 118,
     durationMin: 505,
     temp: 20,
     mealEur: 16.5,
@@ -3300,9 +3308,9 @@ export function createCustomDestinationDeal(rawQuery: string): DestinationDeal {
     hotels: [
       {
         id: `${id}-h1`,
-        name: `${displayTitle.split(' ')[0]} Central Smart Studios`,
-        neighborhood: 'Zentrum · 350m zur U-Bahn / Altstadt',
-        category: 'Smart-Aparthotel (Sparpreis)',
+        name: `3★–4★ Hotels & Studios in ${displayTitle.split(' ')[0]} (Live-Auswahl)`,
+        neighborhood: 'Zentrale Lage · Direkte ÖPNV-Anbindung',
+        category: '3★–4★ Hotels & Aparthotels (Live-Suche)',
         rating: 8.7,
         reviewCount: 540 + (hash % 400),
         pricePerNightTwoAdults: baseHotel,
@@ -3310,16 +3318,16 @@ export function createCustomDestinationDeal(rawQuery: string): DestinationDeal {
         cancellation: 'Nicht erstattbar (Sparpreis)',
         distanceToCenterKm: 0.5,
         highlights: [
-          'Direkte ÖPNV-Anbindung vom Flughafen',
-          'Voll ausgestattete Kitchenette spart Restaurantkosten',
-          '24h Self-Check-in ohne Zusatzgebühren',
+          'Live-Verfügbarkeit aller freien Unterkünfte beim Partner',
+          'Direkte ÖPNV-Anbindung vom Flughafen ins Zentrum',
+          'Freie Hotelwahl nach Bewertung & Lage auf der Partnerseite',
         ],
       },
       {
         id: `${id}-h2`,
-        name: `Boutique Hotel ${displayTitle.split(' ')[0]} Plaza`,
-        neighborhood: 'Historisches Viertel · Fußgängerzone',
-        category: '3.5★ Komfort-Hotel',
+        name: `4★ Komfort-Hotels in ${displayTitle.split(' ')[0]} inkl. Frühstück`,
+        neighborhood: 'Zentrum / Strandnähe · Top-Bewertung',
+        category: '4★ Komfort-Hotels (Live-Suche)',
         rating: 9.0,
         reviewCount: 720 + (hash % 300),
         pricePerNightTwoAdults: Math.round(baseHotel * 1.28),
@@ -3327,16 +3335,16 @@ export function createCustomDestinationDeal(rawQuery: string): DestinationDeal {
         cancellation: 'Kostenlos stornierbar',
         distanceToCenterKm: 0.4,
         highlights: [
-          'Großes regionales Frühstücksbuffet inklusive',
-          'Kostenlose Stornierung bis 24h vor Anreise',
-          'Sonderkontingent -27% ggü. Einzelbuchung',
+          'Frühstücksbuffet & flexible Stornierungsoptionen wählbar',
+          'Tagesaktuelle Sonderpreise direkt beim Partner',
+          'Hunderte echte Gästebewertungen im Live-Vergleich',
         ],
       },
       {
         id: `${id}-h3`,
-        name: `Grand ${displayTitle.split(' ')[0]} Suites & Spa`,
-        neighborhood: 'Panorama-Lage · 10 Min. ins Zentrum',
-        category: '4★ Superior Hotel',
+        name: `4.5★–5★ Resorts & Boutique-Hotels in ${displayTitle.split(' ')[0]}`,
+        neighborhood: 'Premium-Lage · Pool & Wellness',
+        category: '4.5★–5★ Superior & Resorts (Live-Suche)',
         rating: 9.3,
         reviewCount: 410 + (hash % 250),
         pricePerNightTwoAdults: Math.round(baseHotel * 1.65),
@@ -3344,9 +3352,9 @@ export function createCustomDestinationDeal(rawQuery: string): DestinationDeal {
         cancellation: 'Kostenlos stornierbar',
         distanceToCenterKm: 1.2,
         highlights: [
-          'Frühstück & 3-Gänge-Abendmenü inklusive',
-          'Kostenfreier Zugang zu Wellness & Pool',
-          'Später Check-out bis 14:00 Uhr garantiert',
+          'Gehobene Resorts mit Pool, Wellness & Halbpension',
+          'Tagesaktuelle Paket- und Hotelpreise beim Partner',
+          'Freie Auswahl im Live-Suchergebnis',
         ],
       },
     ],
