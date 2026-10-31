@@ -9,9 +9,12 @@ import {
   Car,
   Smartphone,
   Scale,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import {
   AffiliatePartnerConfig,
+  CustomAffiliatePartner,
   UserCurrencyCode,
   formatMoney,
   ProviderBookingLinks,
@@ -46,11 +49,23 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
   const [check24UrlInput, setCheck24UrlInput] = useState<string>(
     affiliateConfig.customCheck24Url || ''
   );
+  const [abInDenUrlaubUrlInput, setAbInDenUrlaubUrlInput] = useState<string>(
+    affiliateConfig.customAbInDenUrlaubUrl || ''
+  );
+  const [tripComUrlInput, setTripComUrlInput] = useState<string>(
+    affiliateConfig.customTripComUrl || ''
+  );
+  const [snowTrexUrlInput, setSnowTrexUrlInput] = useState<string>(
+    affiliateConfig.customSnowTrexUrl || ''
+  );
   const [bookingUrlInput, setBookingUrlInput] = useState<string>(
     affiliateConfig.customBookingUrl || ''
   );
   const [skyscannerUrlInput, setSkyscannerUrlInput] = useState<string>(
     affiliateConfig.customSkyscannerUrl || ''
+  );
+  const [extraPartnersInput, setExtraPartnersInput] = useState<CustomAffiliatePartner[]>(
+    affiliateConfig.extraPartners || []
   );
   const [useExpediaForFlights, setUseExpediaForFlights] = useState<boolean>(
     affiliateConfig.useExpediaForFlightsIfNoSkyscanner ?? true
@@ -70,8 +85,12 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
       affiliateConfig.customExpediaUrl?.trim() ||
       affiliateConfig.customDiscoverCarsUrl?.trim() ||
       affiliateConfig.customCheck24Url?.trim() ||
+      affiliateConfig.customAbInDenUrlaubUrl?.trim() ||
+      affiliateConfig.customTripComUrl?.trim() ||
+      affiliateConfig.customSnowTrexUrl?.trim() ||
       affiliateConfig.customBookingUrl?.trim() ||
-      affiliateConfig.customSkyscannerUrl?.trim()
+      affiliateConfig.customSkyscannerUrl?.trim() ||
+      (affiliateConfig.extraPartners && affiliateConfig.extraPartners.some((p) => p.url.trim()))
   );
 
   // Calculate realistic monthly affiliate earnings
@@ -82,8 +101,42 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
   const totalMonthlyProfitEur =
     flightClickRevenueEur + hotelCommissionEur + extrasCommissionEur;
 
+  const handleAddExtraPartner = () => {
+    setExtraPartnersInput((prev) => [
+      ...prev,
+      {
+        id: `partner-${Date.now()}`,
+        name: '',
+        url: '',
+        category: 'package',
+      },
+    ]);
+  };
+
+  const handleUpdateExtraPartner = (
+    id: string,
+    field: keyof CustomAffiliatePartner,
+    value: string
+  ) => {
+    setExtraPartnersInput((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleRemoveExtraPartner = (id: string) => {
+    setExtraPartnersInput((prev) => prev.filter((item) => item.id !== id));
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanedExtras = extraPartnersInput
+      .map((p) => ({
+        ...p,
+        name: p.name.trim(),
+        url: p.url.trim(),
+      }))
+      .filter((p) => p.name && p.url);
+    setExtraPartnersInput(cleanedExtras);
     onSaveAffiliateConfig({
       travelpayoutsMarker: markerInput.trim(),
       bookingAid: bookingAidInput.trim(),
@@ -91,8 +144,12 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
       customExpediaUrl: expediaUrlInput.trim(),
       customDiscoverCarsUrl: discoverCarsUrlInput.trim(),
       customCheck24Url: check24UrlInput.trim(),
+      customAbInDenUrlaubUrl: abInDenUrlaubUrlInput.trim(),
+      customTripComUrl: tripComUrlInput.trim(),
+      customSnowTrexUrl: snowTrexUrlInput.trim(),
       customBookingUrl: bookingUrlInput.trim(),
       customSkyscannerUrl: skyscannerUrlInput.trim(),
+      extraPartners: cleanedExtras,
       useExpediaForFlightsIfNoSkyscanner: useExpediaForFlights,
     });
     setSavedNotice(true);
@@ -107,8 +164,12 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
       customExpediaUrl: 'https://www.expedia.de/?affcid=DE.DIRECT.PARTNER.584920',
       customDiscoverCarsUrl: 'https://www.discovercars.com/de?a_aid=partner_584920',
       customCheck24Url: 'https://urlaub.check24.de/?partnerid=c24_partner_584920',
+      customAbInDenUrlaubUrl: abInDenUrlaubUrlInput.trim(),
+      customTripComUrl: tripComUrlInput.trim(),
+      customSnowTrexUrl: snowTrexUrlInput.trim(),
       customBookingUrl: bookingUrlInput.trim(),
       customSkyscannerUrl: skyscannerUrlInput.trim(),
+      extraPartners: extraPartnersInput,
       useExpediaForFlightsIfNoSkyscanner: useExpediaForFlights,
     };
     setMarkerInput(demoConfig.travelpayoutsMarker);
@@ -267,12 +328,12 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   <span>1. Ihre vorhandenen Affiliate-Links direkt eintragen</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Fügen Sie hier einfach Ihre kompletten Partner-Links (oder Partner-IDs) für Expedia, DiscoverCars, Check24 & Co. ein
+                  Fügen Sie hier einfach Ihre kompletten Partner-Links (Expedia, Check24, Ab in den Urlaub, Trip.com, SnowTrex, DiscoverCars & beliebig viele weitere) ein
                 </p>
               </div>
             </div>
 
-            {/* Direct URL Inputs for Expedia, DiscoverCars, Check24 */}
+            {/* Direct URL Inputs for Expedia, DiscoverCars, Check24, Ab in den Urlaub, Trip.com, SnowTrex */}
             <div className="space-y-3.5">
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -299,6 +360,90 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label
+                    htmlFor="custom-check24-url"
+                    className="text-xs font-semibold text-slate-800"
+                  >
+                    Ihr Check24 Affiliate-Link (Pauschalreisen & Hotelvergleich)
+                  </label>
+                  <span className="text-[11px] font-mono text-emerald-700">
+                    Nimmt automatisch am Bestpreis-Vergleich teil
+                  </span>
+                </div>
+                <input
+                  id="custom-check24-url"
+                  type="text"
+                  placeholder="z.B. https://a.check24.net/misc/click.php?... oder https://urlaub.check24.de/..."
+                  value={check24UrlInput}
+                  onChange={(e) => setCheck24UrlInput(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label
+                    htmlFor="custom-abindenurlaub-url"
+                    className="text-xs font-semibold text-slate-800"
+                  >
+                    Ihr „Ab in den Urlaub“ Affiliate-Link (Pauschalreisen & Last Minute)
+                  </label>
+                  <span className="text-[11px] font-mono text-emerald-700">
+                    Ideal für Strand-, Familien- & Last-Minute-Reisen
+                  </span>
+                </div>
+                <input
+                  id="custom-abindenurlaub-url"
+                  type="text"
+                  placeholder="z.B. https://www.awin1.com/cread.php?... oder Ihr Ab-in-den-Urlaub Partnerlink"
+                  value={abInDenUrlaubUrlInput}
+                  onChange={(e) => setAbInDenUrlaubUrlInput(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label
+                      htmlFor="custom-tripcom-url"
+                      className="text-xs font-semibold text-slate-800"
+                    >
+                      Ihr Trip.com Affiliate-Link (Flüge & Hotels)
+                    </label>
+                  </div>
+                  <input
+                    id="custom-tripcom-url"
+                    type="text"
+                    placeholder="z.B. https://tp.media/r?... oder de.trip.com/?allianceid=..."
+                    value={tripComUrlInput}
+                    onChange={(e) => setTripComUrlInput(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label
+                      htmlFor="custom-snowtrex-url"
+                      className="text-xs font-semibold text-slate-800"
+                    >
+                      Ihr SnowTrex Affiliate-Link (Ski- & Winterreisen)
+                    </label>
+                  </div>
+                  <input
+                    id="custom-snowtrex-url"
+                    type="text"
+                    placeholder="z.B. Ihr SnowTrex Partnerlink (inkl. Skipass-Deals)"
+                    value={snowTrexUrlInput}
+                    onChange={(e) => setSnowTrexUrlInput(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label
                     htmlFor="custom-discovercars-url"
                     className="text-xs font-semibold text-slate-800"
                   >
@@ -314,28 +459,6 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   placeholder="z.B. https://www.discovercars.com/de?a_aid=IhrName oder Partner-Kurzlink"
                   value={discoverCarsUrlInput}
                   onChange={(e) => setDiscoverCarsUrlInput(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label
-                    htmlFor="custom-check24-url"
-                    className="text-xs font-semibold text-slate-800"
-                  >
-                    Ihr Check24 Affiliate-Link (Pauschalreisen & Hotelvergleich)
-                  </label>
-                  <span className="text-[11px] font-mono text-emerald-700">
-                    Ersetzt alle „Check24 Pauschalreise“-Buttons
-                  </span>
-                </div>
-                <input
-                  id="custom-check24-url"
-                  type="text"
-                  placeholder="z.B. https://a.check24.net/misc/click.php?... oder https://urlaub.check24.de/..."
-                  value={check24UrlInput}
-                  onChange={(e) => setCheck24UrlInput(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
@@ -362,17 +485,102 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                     htmlFor="custom-skyscanner-url"
                     className="block text-xs font-semibold text-slate-700 mb-1"
                   >
-                    Optional: Eigener Flug-Link (Aviasales, Kiwi, Trip.com, Skyscanner)
+                    Optional: Weiterer Flug-Link (Aviasales, Kiwi, Skyscanner)
                   </label>
                   <input
                     id="custom-skyscanner-url"
                     type="text"
-                    placeholder="z.B. Aviasales/Kiwi/Trip.com Link aus Travelpayouts"
+                    placeholder="z.B. Aviasales/Kiwi/Skyscanner Link"
                     value={skyscannerUrlInput}
                     onChange={(e) => setSkyscannerUrlInput(e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                   />
                 </div>
+              </div>
+
+              {/* Dynamic Extra Partners Section ("usw.") */}
+              <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Weitere eigene Affiliate-Partner hinzufügen (z. B. TUI, Lidl Reisen, Berge & Meer, HolidayCheck usw.)
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Sie können hier beliebig viele weitere Partner-Links eintragen – alle nehmen automatisch am Preisvergleich teil.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddExtraPartner}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Weiteren Partner hinzufügen</span>
+                  </button>
+                </div>
+
+                {extraPartnersInput.length > 0 && (
+                  <div className="space-y-2.5 pt-1">
+                    {extraPartnersInput.map((partner, idx) => (
+                      <div
+                        key={partner.id || idx}
+                        className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                      >
+                        <div className="sm:col-span-3">
+                          <input
+                            type="text"
+                            placeholder="Anbieter (z.B. TUI)"
+                            value={partner.name}
+                            onChange={(e) =>
+                              handleUpdateExtraPartner(partner.id, 'name', e.target.value)
+                            }
+                            className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                          />
+                        </div>
+                        <div className="sm:col-span-6">
+                          <input
+                            type="text"
+                            placeholder="Affiliate-Link (https://...)"
+                            value={partner.url}
+                            onChange={(e) =>
+                              handleUpdateExtraPartner(partner.id, 'url', e.target.value)
+                            }
+                            className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <select
+                            value={partner.category}
+                            onChange={(e) =>
+                              handleUpdateExtraPartner(
+                                partner.id,
+                                'category',
+                                e.target.value as CustomAffiliatePartner['category']
+                              )
+                            }
+                            className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                          >
+                            <option value="package">Pauschal</option>
+                            <option value="flight">Flug</option>
+                            <option value="hotel">Hotel</option>
+                            <option value="winter">Winter/Ski</option>
+                            <option value="extra">Extras</option>
+                          </select>
+                        </div>
+                        <div className="sm:col-span-1 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExtraPartner(partner.id)}
+                            title="Partner entfernen"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Automatic Flight Monetization Fallback via Expedia when Skyscanner link is not yet available */}
@@ -386,10 +594,10 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   />
                   <div>
                     <strong className="font-semibold text-slate-900 block">
-                      Flug-Buttons über meinen vorhandenen Expedia-Link abrechnen (Empfohlen):
+                      Flug-Buttons automatisch über Trip.com / Expedia abrechnen (Empfohlen):
                     </strong>
                     <span className="text-slate-600 mt-0.5 block">
-                      Solange oben kein eigener Flug-Link eingetragen ist, verlinkt die App alle „Flug buchen“-Buttons automatisch auf die <strong>Expedia-Flugsuche mit Ihrem Expedia-Partnercode</strong> (oder bei deaktiviertem Haken über Ihre Travelpayouts Marker-ID auf <strong>Aviasales</strong>).
+                      Wenn Sie oben Ihren <strong>Trip.com</strong> oder <strong>Expedia</strong> Link eingetragen haben, laufen auch alle Flug-Buttons automatisch über Ihren Partner-Link.
                     </span>
                   </div>
                 </label>
@@ -402,7 +610,7 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                 2. Optional: Übergeordnete Netzwerk-IDs (mit 100 % Link-Schutz für Ihre Direktlinks)
               </div>
               <p className="text-[11px] text-slate-600 mb-2.5">
-                <strong>Garantie:</strong> Ihre oben eingetragenen Direkt-Links (Expedia, DiscoverCars, Check24) haben immer <strong>100 % Vorrang</strong> und werden niemals von der Travelpayouts Marker-ID überschrieben. Die Marker-ID greift nur bei Anbietern ohne eigenen Link (z. B. Flüge & Airalo eSIM).
+                <strong>Garantie:</strong> Ihre oben eingetragenen Direkt-Links (Expedia, Check24, Ab in den Urlaub, Trip.com, SnowTrex, DiscoverCars) haben immer <strong>100 % Vorrang</strong> und werden niemals von der Travelpayouts Marker-ID überschrieben.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
@@ -458,7 +666,7 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
               </div>
             </div>
 
-            {/* Live Generated Affiliate URL Preview for Expedia, DiscoverCars, Check24 & Flights */}
+            {/* Live Generated Affiliate URL Preview */}
             <div className="bg-white border border-slate-200 rounded-xl p-3.5 text-xs space-y-2.5">
               <div className="font-semibold text-slate-800">
                 Live-Kontrolle Ihrer aktiven Ziel-Links (aktuelles Ziel: {activeDestinationCity.split(' ')[0]}):
@@ -477,19 +685,29 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                     url: sampleLinks.expediaPackageUrl,
                   },
                   {
-                    key: 'discovercars',
-                    label: 'DiscoverCars Link (Mietwagen)',
-                    url: sampleLinks.rentalCarUrl,
-                  },
-                  {
                     key: 'check24',
                     label: 'Check24 Link (Pauschalreisen)',
                     url: sampleLinks.check24HolidayUrl,
                   },
                   {
-                    key: 'flights',
-                    label: 'Flug-Button Link (Skyscanner oder Expedia-Überbrückung)',
-                    url: sampleLinks.skyscannerFlightUrl,
+                    key: 'abindenurlaub',
+                    label: 'Ab in den Urlaub Link (Pauschal & Last Minute)',
+                    url: sampleLinks.abInDenUrlaubUrl,
+                  },
+                  {
+                    key: 'tripcom',
+                    label: 'Trip.com Link (Flüge & Hotels)',
+                    url: sampleLinks.tripComUrl,
+                  },
+                  {
+                    key: 'snowtrex',
+                    label: 'SnowTrex Link (Ski- & Bergurlaub)',
+                    url: sampleLinks.snowTrexUrl,
+                  },
+                  {
+                    key: 'discovercars',
+                    label: 'DiscoverCars Link (Mietwagen)',
+                    url: sampleLinks.rentalCarUrl,
                   },
                 ] as const
               ).map((item) => (
@@ -605,19 +823,19 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
 
                 <div className="pt-3 border-t border-slate-800 space-y-1.5 text-slate-300">
                   <div className="flex justify-between">
-                    <span>1. Flug-Klicks & Weiterleitungen (Skyscanner / Kayak)</span>
+                    <span>1. Flug-Klicks & Weiterleitungen (Trip.com / Skyscanner / Kayak)</span>
                     <span className="font-mono text-white tabular-nums">
                       +{formatMoney(flightClickRevenueEur, userCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>2. Hotel-Provisionen (Ø 5 % bei Booking.com)</span>
+                    <span>2. Hotel- & Pauschal-Provisionen (Expedia, Ab in den Urlaub, SnowTrex)</span>
                     <span className="font-mono text-white tabular-nums">
                       +{formatMoney(hotelCommissionEur, userCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>3. Pauschalreisen, Mietwagen & Reise-Extras</span>
+                    <span>3. Mietwagen & Reise-Extras (DiscoverCars, Airalo)</span>
                     <span className="font-mono text-white tabular-nums">
                       +{formatMoney(extrasCommissionEur, userCurrency)}
                     </span>
@@ -700,8 +918,18 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
               if (discoverCarsUrlInput.trim())
                 params.set('discovercars', discoverCarsUrlInput.trim());
               if (check24UrlInput.trim()) params.set('check24', check24UrlInput.trim());
+              if (abInDenUrlaubUrlInput.trim())
+                params.set('abindenurlaub', abInDenUrlaubUrlInput.trim());
+              if (tripComUrlInput.trim()) params.set('tripcom', tripComUrlInput.trim());
+              if (snowTrexUrlInput.trim()) params.set('snowtrex', snowTrexUrlInput.trim());
               if (bookingUrlInput.trim()) params.set('booking', bookingUrlInput.trim());
               if (skyscannerUrlInput.trim()) params.set('skyscanner', skyscannerUrlInput.trim());
+              const validExtras = extraPartnersInput.filter(
+                (p) => p.name.trim() && p.url.trim()
+              );
+              if (validExtras.length > 0) {
+                params.set('extra', JSON.stringify(validExtras));
+              }
               if (markerInput.trim()) params.set('marker', markerInput.trim());
               if (bookingAidInput.trim()) params.set('aid', bookingAidInput.trim());
               if (awinIdInput.trim()) params.set('awin', awinIdInput.trim());
@@ -733,9 +961,10 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                     </button>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Alle Affiliate-Links, die Sie links eintragen, werden automatisch in diesen Code
-                    eingebaut. Dadurch nutzt <strong>jeder Besucher Ihrer Homepage</strong>{' '}
-                    automatisch Ihre Partner-Links.
+                    Alle Affiliate-Links, die Sie links eintragen (inkl. Ab in den Urlaub, Trip.com,
+                    SnowTrex & eigene Partner), werden automatisch in diesen Code eingebaut. Dadurch
+                    nutzt <strong>jeder Besucher Ihrer Homepage</strong> automatisch Ihre
+                    Partner-Links.
                   </p>
                   <pre className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-[10px] font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap break-all">
                     {iframeCode}

@@ -203,6 +203,13 @@ export const CURATED_COMPLETE_PACKAGES: CompletePackageOffer[] = [
   },
 ];
 
+export interface CustomAffiliatePartner {
+  id: string;
+  name: string;
+  url: string;
+  category: 'package' | 'flight' | 'hotel' | 'winter' | 'extra';
+}
+
 export interface AffiliatePartnerConfig {
   travelpayoutsMarker: string; // e.g., "548291" — covers Skyscanner, Kayak, Aviasales, DiscoverCars, Airalo, Compensair
   bookingAid: string; // e.g., "2384910" — direct Booking.com Affiliate ID (aid)
@@ -212,6 +219,10 @@ export interface AffiliatePartnerConfig {
   customCheck24Url?: string; // Direct Check24 / Pauschalreise affiliate link (e.g. https://a.check24.net/... or https://urlaub.check24.de/...)
   customBookingUrl?: string; // Direct Booking.com affiliate link
   customSkyscannerUrl?: string; // Direct Skyscanner / Flight affiliate link
+  customAbInDenUrlaubUrl?: string; // Direct Ab in den Urlaub affiliate link (Pauschalreisen & Last Minute)
+  customTripComUrl?: string; // Direct Trip.com affiliate link (Flüge, Hotels & Kombi-Reisen)
+  customSnowTrexUrl?: string; // Direct SnowTrex affiliate link (Skiurlaub, Winterreisen & Bergurlaub inkl. Skipass)
+  extraPartners?: CustomAffiliatePartner[]; // Unlimited additional custom affiliate partners ("usw.")
   useExpediaForFlightsIfNoSkyscanner?: boolean; // Automatically monetize flight buttons with user's Expedia link until Skyscanner is added
 }
 
@@ -224,15 +235,27 @@ export const DEFAULT_AFFILIATE_CONFIG: AffiliatePartnerConfig = {
   customCheck24Url: '',
   customBookingUrl: '',
   customSkyscannerUrl: '',
+  customAbInDenUrlaubUrl: '',
+  customTripComUrl: '',
+  customSnowTrexUrl: '',
+  extraPartners: [],
   useExpediaForFlightsIfNoSkyscanner: true,
 };
 
 export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
-  let baseConfig = { ...DEFAULT_AFFILIATE_CONFIG };
+  let baseConfig: AffiliatePartnerConfig = {
+    ...DEFAULT_AFFILIATE_CONFIG,
+    extraPartners: [],
+  };
   try {
     const raw = localStorage.getItem('sparflug_affiliate_config');
     if (raw) {
-      baseConfig = { ...baseConfig, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      baseConfig = {
+        ...baseConfig,
+        ...parsed,
+        extraPartners: Array.isArray(parsed?.extraPartners) ? parsed.extraPartners : [],
+      };
     }
   } catch {
     // ignore storage errors
@@ -250,6 +273,19 @@ export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
       if (sp.get('check24')) baseConfig.customCheck24Url = sp.get('check24')!;
       if (sp.get('booking')) baseConfig.customBookingUrl = sp.get('booking')!;
       if (sp.get('skyscanner')) baseConfig.customSkyscannerUrl = sp.get('skyscanner')!;
+      if (sp.get('abindenurlaub')) baseConfig.customAbInDenUrlaubUrl = sp.get('abindenurlaub')!;
+      if (sp.get('tripcom')) baseConfig.customTripComUrl = sp.get('tripcom')!;
+      if (sp.get('snowtrex')) baseConfig.customSnowTrexUrl = sp.get('snowtrex')!;
+      if (sp.get('extra')) {
+        try {
+          const parsedExtra = JSON.parse(sp.get('extra')!);
+          if (Array.isArray(parsedExtra)) {
+            baseConfig.extraPartners = parsedExtra;
+          }
+        } catch {
+          // ignore malformed extra json
+        }
+      }
     }
   } catch {
     // ignore URL parse errors
@@ -334,6 +370,9 @@ export interface ProviderBookingLinks {
   trivagoHotelUrl: string;
   expediaPackageUrl: string;
   check24HolidayUrl: string;
+  abInDenUrlaubUrl: string;
+  tripComUrl: string;
+  snowTrexUrl: string;
   bahnTransferUrl: string;
   rentalCarUrl: string;
   esimDataUrl: string;
@@ -381,12 +420,19 @@ export function buildProviderBookingLinks(params: {
   const marker = aff.travelpayoutsMarker.trim();
   const aid = aff.bookingAid.trim();
   const awin = aff.awinPublisherId.trim();
+  const activeExtraPartners = (aff.extraPartners || []).filter(
+    (p) => p && p.name.trim() && p.url.trim()
+  );
   const hasCustomUrl = Boolean(
     aff.customExpediaUrl?.trim() ||
       aff.customDiscoverCarsUrl?.trim() ||
       aff.customCheck24Url?.trim() ||
       aff.customBookingUrl?.trim() ||
-      aff.customSkyscannerUrl?.trim()
+      aff.customSkyscannerUrl?.trim() ||
+      aff.customAbInDenUrlaubUrl?.trim() ||
+      aff.customTripComUrl?.trim() ||
+      aff.customSnowTrexUrl?.trim() ||
+      activeExtraPartners.length > 0
   );
   const isMonetized = Boolean(marker || aid || awin || hasCustomUrl);
 
@@ -409,11 +455,22 @@ export function buildProviderBookingLinks(params: {
   const aviaOut = outParts.length === 3 ? `${outParts[2]}${outParts[1]}` : '1711';
   const aviaIn = inParts.length === 3 ? `${inParts[2]}${inParts[1]}` : '2111';
 
+  // Trip.com Deep Link (Flights + Hotels)
+  const hasDirectTripCom = Boolean(aff.customTripComUrl?.trim());
+  const baseTripComUrl = `https://de.trip.com/flights/${originCode.toLowerCase()}-to-${destCode.toLowerCase()}/tickets-${originCode.toLowerCase()}-${destCode.toLowerCase()}?dcity=${originCode.toLowerCase()}&acity=${destCode.toLowerCase()}&ddate=${departureDateStr}&rdate=${returnDateStr}&flighttype=rt&class=y&quantity=${travelers}`;
+  const tripComUrl = resolveCustomAffiliateUrl(
+    aff.customTripComUrl,
+    baseTripComUrl,
+    'trip.com',
+    'allianceid'
+  );
+
   // 1. Flight Search Deep Link:
   // Priority A: User's custom Flight Affiliate Link (Skyscanner via Impact, Aviasales, Kiwi.com, Trip.com)
-  // Priority B: User's existing Expedia Affiliate Link (Expedia Flights) if checkbox is enabled
-  // Priority C: Travelpayouts Aviasales flight search if Travelpayouts Marker-ID is entered
-  // Priority D: Standard Skyscanner search
+  // Priority B: User's dedicated Trip.com Affiliate Link if entered
+  // Priority C: User's existing Expedia Affiliate Link (Expedia Flights) if checkbox is enabled
+  // Priority D: Travelpayouts Aviasales flight search if Travelpayouts Marker-ID is entered
+  // Priority E: Standard Skyscanner search
   const baseSkyscannerUrl = `https://www.skyscanner.de/transport/fluge/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${skyOut}/${skyIn}/?adultsv2=${travelers}&cabinclass=economy&currency=${userCurrency}`;
   const baseAviasalesUrl = `https://www.aviasales.com/search/${originCode.toUpperCase()}${aviaOut}${destCode.toUpperCase()}${aviaIn}${travelers}?currency=${userCurrency.toLowerCase()}${marker ? `&marker=${encodeURIComponent(marker)}` : ''}`;
   const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?trip=roundtrip&leg1=from:${encodeURIComponent(originCode)},to:${encodeURIComponent(destCode)},departure:${departureDateStr}TANYT&leg2=from:${encodeURIComponent(destCode)},to:${encodeURIComponent(originCode)},departure:${returnDateStr}TANYT&passengers=adults:${travelers}&mode=search`;
@@ -432,6 +489,8 @@ export function buildProviderBookingLinks(params: {
           : 'skyscanner',
         'marker'
       )
+    : hasDirectTripCom
+    ? tripComUrl
     : aff.useExpediaForFlightsIfNoSkyscanner && aff.customExpediaUrl?.trim()
     ? resolveCustomAffiliateUrl(aff.customExpediaUrl, baseExpediaFlightUrl, 'expedia', 'affcid')
     : marker
@@ -515,6 +574,26 @@ export function buildProviderBookingLinks(params: {
     'partnerid'
   );
 
+  // 8b. Ab in den Urlaub Pauschalreise & Last-Minute Deep Link
+  const hasDirectAbInDenUrlaub = Boolean(aff.customAbInDenUrlaubUrl?.trim());
+  const baseAbInDenUrlaubUrl = `https://www.ab-in-den-urlaub.de/suche?search=${encodeURIComponent(cleanCity)}&depDate=${departureDateStr}&retDate=${returnDateStr}&adults=${travelers}`;
+  const abInDenUrlaubUrl = resolveCustomAffiliateUrl(
+    aff.customAbInDenUrlaubUrl,
+    baseAbInDenUrlaubUrl,
+    'ab-in-den-urlaub',
+    'partnerid'
+  );
+
+  // 8c. SnowTrex Winter-, Ski- & Bergurlaub Deep Link
+  const hasDirectSnowTrex = Boolean(aff.customSnowTrexUrl?.trim());
+  const baseSnowTrexUrl = `https://www.snowtrex.de/suche.html?q=${encodeURIComponent(cleanCity)}&persons=${travelers}`;
+  const snowTrexUrl = resolveCustomAffiliateUrl(
+    aff.customSnowTrexUrl,
+    baseSnowTrexUrl,
+    'snowtrex',
+    'partnerid'
+  );
+
   // 9. Deutsche Bahn / ÖPNV Airport Transfer
   const bahnTransferUrl = `https://www.bahn.de/`;
 
@@ -535,12 +614,21 @@ export function buildProviderBookingLinks(params: {
   const citySeed = cleanCity
     .split('')
     .reduce((acc, ch, idx) => acc + ch.charCodeAt(0) * (idx + 1), 0);
-  const isBeachHolidayDest = ['PMI', 'AYT', 'HRG', 'RAK', 'LPA', 'SPU'].includes(
+  const isBeachHolidayDest = ['PMI', 'AYT', 'HRG', 'RAK', 'LPA', 'SPU', 'RHO', 'HER', 'FAO'].includes(
     destCode.toUpperCase()
   );
-  const isLongHaulOrCityDest = ['BKK', 'JFK', 'DXB', 'LIS', 'BUD', 'KRK', 'SAW', 'ATH'].includes(
+  const isLongHaulOrCityDest = ['BKK', 'JFK', 'DXB', 'LIS', 'BUD', 'KRK', 'SAW', 'ATH', 'BCN', 'ROM'].includes(
     destCode.toUpperCase()
   );
+  const cityLower = destCity.toLowerCase();
+  const isWinterOrMountainDest =
+    ['INN', 'SZG', 'ZRH', 'GVA', 'TAT', 'KLU', 'BGY', 'TRN'].includes(destCode.toUpperCase()) ||
+    cityLower.includes('tirol') ||
+    cityLower.includes('alpen') ||
+    cityLower.includes('tatra') ||
+    cityLower.includes('ski') ||
+    cityLower.includes('innsbruck') ||
+    cityLower.includes('salzburg');
 
   const candidateOffers: {
     id: string;
@@ -567,6 +655,30 @@ export function buildProviderBookingLinks(params: {
       rawRankScore: isBeachHolidayDest ? 1 : isLongHaulOrCityDest ? 2 : ((citySeed + 1) % 3) + 1,
     },
     {
+      id: 'abindenurlaub',
+      providerShortName: 'Ab in den Urlaub',
+      name: 'Ab in den Urlaub Deal',
+      url: abInDenUrlaubUrl,
+      hasActiveAffiliate: hasDirectAbInDenUrlaub,
+      rawRankScore: isBeachHolidayDest ? 1 : ((citySeed + 2) % 3) + 1,
+    },
+    {
+      id: 'tripcom',
+      providerShortName: 'Trip.com',
+      name: 'Trip.com Kombi-Deal',
+      url: tripComUrl,
+      hasActiveAffiliate: hasDirectTripCom,
+      rawRankScore: isLongHaulOrCityDest ? 1 : ((citySeed + 1) % 3) + 1,
+    },
+    {
+      id: 'snowtrex',
+      providerShortName: 'SnowTrex',
+      name: 'SnowTrex Winter-Deal',
+      url: snowTrexUrl,
+      hasActiveAffiliate: hasDirectSnowTrex,
+      rawRankScore: isWinterOrMountainDest ? 0 : 3,
+    },
+    {
       id: 'booking',
       providerShortName: 'Booking.com',
       name: 'Booking.com Sparpreis',
@@ -587,6 +699,24 @@ export function buildProviderBookingLinks(params: {
     });
   }
 
+  // Include all user-added extra affiliate partners ("usw.")
+  activeExtraPartners.forEach((partner, idx) => {
+    const resolvedExtraUrl = resolveCustomAffiliateUrl(
+      partner.url,
+      partner.url,
+      partner.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+      'partnerid'
+    );
+    candidateOffers.push({
+      id: `extra-${partner.id || idx}`,
+      providerShortName: partner.name.trim(),
+      name: `${partner.name.trim()} Sparpreis`,
+      url: resolvedExtraUrl,
+      hasActiveAffiliate: true,
+      rawRankScore: partner.category === 'winter' && isWinterOrMountainDest ? 0 : ((citySeed + idx) % 3) + 1,
+    });
+  });
+
   // Strictly filter to the partners configured by the user (if at least 1 partner is configured)
   const monetizedCandidates = candidateOffers.filter((c) => c.hasActiveAffiliate);
   const poolToUse = [...(monetizedCandidates.length > 0 ? monetizedCandidates : candidateOffers)].sort(
@@ -599,7 +729,7 @@ export function buildProviderBookingLinks(params: {
     name: item.name,
     url: item.url,
     hasActiveAffiliate: item.hasActiveAffiliate,
-    priceDeltaEur: idx === 0 ? 0 : idx === 1 ? 18 + (citySeed % 17) : 39 + (citySeed % 23),
+    priceDeltaEur: idx === 0 ? 0 : idx === 1 ? 18 + (citySeed % 17) : 29 + idx * 9 + (citySeed % 15),
     isWinner: idx === 0,
   }));
 
@@ -619,6 +749,9 @@ export function buildProviderBookingLinks(params: {
     trivagoHotelUrl,
     expediaPackageUrl,
     check24HolidayUrl,
+    abInDenUrlaubUrl,
+    tripComUrl,
+    snowTrexUrl,
     bahnTransferUrl,
     rentalCarUrl,
     esimDataUrl,
