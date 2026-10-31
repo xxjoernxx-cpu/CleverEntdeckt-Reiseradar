@@ -9,6 +9,8 @@ interface Check24PackageWidgetProps {
   discoverCarsDirectUrl?: string;
   tuiCamperDirectUrl?: string;
   camperDaysDirectUrl?: string;
+  campingInfoDirectUrl?: string;
+  asiReisenDirectUrl?: string;
   destinationCity: string;
 }
 
@@ -20,6 +22,8 @@ export const Check24PackageWidget: React.FC<Check24PackageWidgetProps> = ({
   discoverCarsDirectUrl = 'https://www.discovercars.com/de?a_aid=CleverEntdeckt&a_bid=61a4ac81',
   tuiCamperDirectUrl = 'https://www.awin1.com/cread.php?awinmid=11934&awinaffid=3034525&ued=https%3A%2F%2Fwww.tuicamper.com%2F',
   camperDaysDirectUrl = 'https://www.awin1.com/cread.php?awinmid=52889&awinaffid=3034525&ued=https%3A%2F%2Fwww.camperdays.de%2F',
+  campingInfoDirectUrl = 'https://www.awin1.com/cread.php?awinmid=44063&awinaffid=3034525&ued=https%3A%2F%2Fwww.camping.info%2Fde%2Fland%2Fdeutschland',
+  asiReisenDirectUrl = 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525',
   destinationCity,
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
@@ -91,14 +95,14 @@ export const Check24PackageWidget: React.FC<Check24PackageWidgetProps> = ({
             <div className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-blue-600">
               <Sparkles className="w-3.5 h-3.5" />
               <span>
-                Offizielle Partner-Widgets aktiv · CHECK24 (#{cleanWidgetId}) · Expedia ({cleanExpediaCamref}) · DiscoverCars · TUI Camper & CamperDays
+                Offizielle Partner-Widgets aktiv · CHECK24 (#{cleanWidgetId}) · Expedia ({cleanExpediaCamref}) · DiscoverCars · camping.info · ASI Reisen · TUI Camper & CamperDays
               </span>
             </div>
             <h3 className="text-lg font-bold text-slate-900 mt-0.5">
-              Direkte Pauschalreise-Suche (CHECK24), Expedia Deals, Mietwagen & Wohnmobile
+              Direkte Pauschalreise-Suche (CHECK24), Expedia Deals, Mietwagen, Camping & Naturreisen
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Ihre Besucher können hier direkt über Ihre offiziellen Partner-Widgets suchen & buchen – jede Buchung wird automatisch Ihrer CHECK24-ID <strong>{cleanWidgetId}</strong>, Ihrer Expedia-ID <strong>{cleanExpediaCamref}</strong>, Ihrem DiscoverCars-Konto <strong>CleverEntdeckt</strong> bzw. Ihrer Awin-ID <strong>3034525</strong> (TUI Camper & CamperDays) gutgeschrieben.
+              Ihre Besucher können hier direkt über Ihre offiziellen Partner-Widgets suchen & buchen – jede Buchung wird automatisch Ihrer CHECK24-ID <strong>{cleanWidgetId}</strong>, Ihrer Expedia-ID <strong>{cleanExpediaCamref}</strong>, Ihrem DiscoverCars-Konto <strong>CleverEntdeckt</strong> bzw. Ihrer Awin-ID <strong>3034525</strong> (camping.info, ASI Reisen, TUI Camper & CamperDays) gutgeschrieben.
             </p>
           </div>
 
@@ -130,6 +134,24 @@ export const Check24PackageWidget: React.FC<Check24PackageWidgetProps> = ({
               className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5"
             >
               <span>Mietwagen {cleanCity}</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <a
+              href={campingInfoDirectUrl}
+              target="_blank"
+              rel="sponsored noopener noreferrer"
+              className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5"
+            >
+              <span>camping.info</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <a
+              href={asiReisenDirectUrl}
+              target="_blank"
+              rel="sponsored noopener noreferrer"
+              className="px-3.5 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5"
+            >
+              <span>ASI Reisen (Wandern & Natur)</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
             <a

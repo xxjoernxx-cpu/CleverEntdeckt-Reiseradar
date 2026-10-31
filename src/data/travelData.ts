@@ -386,6 +386,12 @@ export const DEFAULT_EXTRA_PARTNERS: CustomAffiliatePartner[] = [
     url: 'https://www.awin1.com/cread.php?awinmid=52889&awinaffid=3034525&ued=https%3A%2F%2Fwww.camperdays.de%2F',
     category: 'extra',
   },
+  {
+    id: 'camping-info-awin-44063',
+    name: 'camping.info (Campingplätze & Glamping)',
+    url: 'https://www.awin1.com/cread.php?awinmid=44063&awinaffid=3034525&ued=https%3A%2F%2Fwww.camping.info%2Fde%2Fland%2Fdeutschland',
+    category: 'extra',
+  },
 ];
 
 export const DEFAULT_AFFILIATE_CONFIG: AffiliatePartnerConfig = {
@@ -639,6 +645,7 @@ export interface ProviderBookingLinks {
   klookActivitiesUrl: string;
   tuiCamperUrl: string;
   camperDaysUrl: string;
+  campingInfoUrl: string;
   bahnTransferUrl: string;
   rentalCarUrl: string;
   esimDataUrl: string;
@@ -864,6 +871,18 @@ export function buildProviderBookingLinks(params: {
     'awinaffid'
   );
 
+  // 10d. camping.info (Campingplätze, Stellplätze & Glamping via Awin awinmid=44063 & awinaffid=3034525)
+  const campingInfoPartnerEntry = activeExtraPartners.find((p) =>
+    p.url.toLowerCase().includes('camping.info') || p.url.includes('44063')
+  );
+  const campingInfoUrl = resolveCustomAffiliateUrl(
+    campingInfoPartnerEntry?.url ||
+      'https://www.awin1.com/cread.php?awinmid=44063&awinaffid=3034525&ued=https%3A%2F%2Fwww.camping.info%2Fde%2Fland%2Fdeutschland',
+    'https://www.camping.info/de/land/deutschland',
+    'camping.info',
+    'awinaffid'
+  );
+
   const esimDataUrl = klookActivitiesUrl;
   const flightCompensationUrl = tuiCamperUrl;
 
@@ -1023,6 +1042,7 @@ export function buildProviderBookingLinks(params: {
     klookActivitiesUrl,
     tuiCamperUrl,
     camperDaysUrl,
+    campingInfoUrl,
     bahnTransferUrl,
     rentalCarUrl,
     esimDataUrl,
@@ -1109,7 +1129,7 @@ export interface DestinationDeal {
   id: string;
   city: string;
   country: string;
-  regionTag: 'Mittelmeer' | 'Städtetrip' | 'Atlantik & Inseln' | 'Balkan & Osteuropa' | 'Fernreise-Budget';
+  regionTag: 'Mittelmeer' | 'Städtetrip' | 'Atlantik & Inseln' | 'Balkan & Osteuropa' | 'Camping & Natur' | 'Fernreise-Budget';
   iata: string;
   tagline: string;
   avgTempMayOct: number;

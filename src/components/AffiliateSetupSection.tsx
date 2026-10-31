@@ -431,7 +431,7 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                       htmlFor="custom-snowtrex-url"
                       className="text-xs font-semibold text-slate-800"
                     >
-                      Ihr ASI Reisen / Berg- & Winter-Link
+                      Ihr ASI Reisen Link (Wander-, Trekking- & Skiwanderreisen)
                     </label>
                     <span className="text-[11px] font-mono text-emerald-700 font-semibold">
                       ✓ ASI Reisen (v=126961) aktiv
@@ -708,8 +708,23 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   },
                   {
                     key: 'snowtrex',
-                    label: 'ASI Reisen Link (Rund-, Berg- & Aktivreisen)',
+                    label: 'ASI Reisen Link (Wander-, Trekking-, Berg- & Skiwanderreisen)',
                     url: sampleLinks.snowTrexUrl,
+                  },
+                  {
+                    key: 'campinginfo',
+                    label: 'camping.info Link (Campingplätze, Stellplätze & Glamping)',
+                    url: sampleLinks.campingInfoUrl,
+                  },
+                  {
+                    key: 'tuicamper',
+                    label: 'TUI Camper Link (Wohnmobile & Camper)',
+                    url: sampleLinks.tuiCamperUrl,
+                  },
+                  {
+                    key: 'camperdays',
+                    label: 'CamperDays Link (Wohnmobil-Preisvergleich)',
+                    url: sampleLinks.camperDaysUrl,
                   },
                   {
                     key: 'klook',
@@ -861,7 +876,7 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
               <div className="text-xs font-bold text-slate-900 mb-2">
                 Zusätzliche Hochprovisions-Partner (aktiv verknüpft für {activeDestinationCity.split(' ')[0]}):
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
                 <a
                   href={sampleLinks.rentalCarUrl}
                   target="_blank"
@@ -877,6 +892,24 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                   </div>
                   <span className="text-[10px] text-emerald-700 font-mono mt-1 block">
                     ✓ a_aid: CleverEntdeckt
+                  </span>
+                </a>
+
+                <a
+                  href={sampleLinks.campingInfoUrl}
+                  target="_blank"
+                  rel="sponsored noopener noreferrer"
+                  className="p-2.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg flex flex-col justify-between transition-colors"
+                >
+                  <div className="flex items-center justify-between text-slate-700 font-semibold">
+                    <span className="flex items-center gap-1">
+                      <Car className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>camping.info</span>
+                    </span>
+                    <ExternalLink className="w-3 h-3 text-slate-400" />
+                  </div>
+                  <span className="text-[10px] text-emerald-700 font-mono mt-1 block">
+                    ✓ Awin: 3034525 (44063)
                   </span>
                 </a>
 
@@ -948,7 +981,7 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                     <ExternalLink className="w-3 h-3 text-slate-400" />
                   </div>
                   <span className="text-[10px] text-emerald-700 font-mono mt-1 block">
-                    ✓ Awin: 3034525
+                    ✓ Awin: 3034525 (126961)
                   </span>
                 </a>
               </div>
