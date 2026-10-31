@@ -68,10 +68,91 @@ const INITIAL_ALERTS: PriceAlertItem[] = [
 ];
 
 export default function App() {
+  // Parse optional URL parameters, path, or hash for country/destination links
+  // Supports: ?ziel=Spanien, /spanien, #spanien, ?ziel=Tuerkei, /tuerkei, #tuerkei, ?ziel=Italien, /italien, #italien
+  const initialUrlParams = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return { query: '', origin: 'FRA', destId: 'palma-mallorca', isDirectCountryLink: false };
+    }
+    const sp = new URLSearchParams(window.location.search);
+    const rawQueryParam = (
+      sp.get('ziel') ||
+      sp.get('land') ||
+      sp.get('country') ||
+      sp.get('q') ||
+      ''
+    ).trim();
+
+    // Also check URL pathname (e.g. /spanien, /tuerkei, /italien)
+    const rawPathSegment = decodeURIComponent(
+      window.location.pathname.replace(/^\/+|\/+$/g, '')
+    ).trim();
+    const ignoredPaths = new Set(['', 'index.html', 'app']);
+
+    // Also check URL hash if it's not a section ID (e.g. #spanien, #tuerkei, #italien)
+    const rawHashSegment = decodeURIComponent(window.location.hash.replace(/^#+/, '')).trim();
+    const knownSectionIds = new Set([
+      'suche',
+      'waehrungsrechner',
+      'entdecker',
+      'preiskalender',
+      'routenoptimierer',
+      'buchung',
+      'affiliate-setup',
+    ]);
+
+    const rawTarget =
+      rawQueryParam ||
+      (!ignoredPaths.has(rawPathSegment.toLowerCase()) ? rawPathSegment : '') ||
+      (rawHashSegment && !knownSectionIds.has(rawHashSegment.toLowerCase()) ? rawHashSegment : '');
+
+    // Normalize common ASCII spellings (e.g., Tuerkei -> Türkei)
+    const normalizedLower = rawTarget.toLowerCase();
+    let cleanQuery = rawTarget;
+    if (
+      normalizedLower === 'tuerkei' ||
+      normalizedLower === 'turkei' ||
+      normalizedLower === 'türkei' ||
+      normalizedLower === 'turkey'
+    ) {
+      cleanQuery = 'Türkei';
+    } else if (normalizedLower === 'spanien' || normalizedLower === 'spain') {
+      cleanQuery = 'Spanien';
+    } else if (normalizedLower === 'italien' || normalizedLower === 'italy') {
+      cleanQuery = 'Italien';
+    }
+
+    const rawOrigin = (sp.get('ab') || sp.get('origin') || '').trim().toUpperCase();
+    const validOrigin = DEPARTURE_HUBS.some((h) => h.code === rawOrigin) ? rawOrigin : 'FRA';
+
+    let matchedDestId = 'palma-mallorca';
+    if (cleanQuery) {
+      const qLower = cleanQuery.toLowerCase();
+      const firstMatch = DESTINATIONS.find(
+        (d) =>
+          d.country.toLowerCase().includes(qLower) ||
+          d.city.toLowerCase().includes(qLower) ||
+          d.iata.toLowerCase() === qLower
+      );
+      if (firstMatch) {
+        matchedDestId = firstMatch.id;
+      }
+    }
+
+    return {
+      query: cleanQuery,
+      origin: validOrigin,
+      destId: matchedDestId,
+      isDirectCountryLink: Boolean(cleanQuery),
+    };
+  }, []);
+
   // Search & Filter State
-  const [originCode, setOriginCode] = useState<string>('FRA');
-  const [userCurrency, setUserCurrency] = useState<UserCurrencyCode>('EUR');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [originCode, setOriginCode] = useState<string>(initialUrlParams.origin);
+  const [userCurrency, setUserCurrency] = useState<UserCurrencyCode>(() =>
+    ['ZRH', 'BSL', 'GVA'].includes(initialUrlParams.origin) ? 'CHF' : 'EUR'
+  );
+  const [searchQuery, setSearchQuery] = useState<string>(initialUrlParams.query);
   const [selectedRegion, setSelectedRegion] = useState<string>('Alle');
   const [durationNights, setDurationNights] = useState<number>(4);
   const [travelers, setTravelers] = useState<number>(2);
@@ -82,7 +163,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState<SortStrategy>('lowest_total');
 
   // Active Destination & Calendar State
-  const [activeDestId, setActiveDestId] = useState<string>('palma-mallorca');
+  const [activeDestId, setActiveDestId] = useState<string>(initialUrlParams.destId);
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-11');
   const [selectedDateStr, setSelectedDateStr] = useState<string>('2026-11-17');
   const [selectedRouteId, setSelectedRouteId] = useState<string>('');
@@ -106,9 +187,14 @@ export default function App() {
     getSavedAffiliateConfig()
   );
   const [isPublicCustomerView, setIsPublicCustomerView] = useState<boolean>(() => {
-    if (typeof window !== 'undefined' && window.location.search) {
+    if (typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
-      if (sp.get('view') === 'public' || sp.get('public') === '1') {
+      if (sp.get('admin') === '1') return false;
+      if (
+        sp.get('view') === 'public' ||
+        sp.get('public') === '1' ||
+        initialUrlParams.isDirectCountryLink
+      ) {
         return true;
       }
     }
@@ -365,7 +451,13 @@ export default function App() {
       );
     }
 
-    setSearchQuery('');
+    // Preserve active country filter if the selected package belongs to that country
+    const currentQ = searchQuery.trim().toLowerCase();
+    const matchesCurrentCountry =
+      currentQ !== '' && pkg.country.toLowerCase().includes(currentQ);
+    if (!matchesCurrentCountry) {
+      setSearchQuery('');
+    }
     setActiveDestId(dealToUse.id);
     setLastSearchSummary(
       `Komplettreise-Paket geladen: ${pkg.days} Tage (${pkg.nights} Nächte) ${
@@ -599,13 +691,73 @@ export default function App() {
                 Unabhängige Tiefpreis-Suchmaschine <span aria-hidden="true">·</span> Multi-Airport-Radius <span aria-hidden="true">·</span> 2× One-Way Split-Ticketing <span aria-hidden="true">·</span> Live-Währungsumrechnung ({userCurrency})
               </p>
               <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-slate-900 mt-2 leading-[1.15] text-balance">
-                Finden Sie günstige Reisen, egal wohin oder zu Ihrem Traumziel.
+                {searchQuery.trim()
+                  ? `Günstige Reisen & Angebote für ${searchQuery.trim()} direkt im Vergleich.`
+                  : 'Finden Sie günstige Reisen, egal wohin oder zu Ihrem Traumziel.'}
               </h1>
               <p className="text-base text-slate-600 mt-3 leading-relaxed">
                 Statt starrer Einzelflüge kombiniert der Algorithmus automatisch Nachbarflughäfen
                 im 180-km-Umkreis, getrennte Hin- und Rückflug-Airlines sowie reduzierte
                 Unterkunftskontingente — direkt umgerechnet in Ihre gewünschte Zahlungswährung.
               </p>
+            </div>
+
+            {/* Country / Topic Quick-Selection Bar (Ideal for Spain, Turkey & Italy embeds) */}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 bg-blue-50/80 border border-blue-200/80 rounded-xl px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-800">
+                  {searchQuery.trim()
+                    ? `Vorauswahl „${searchQuery.trim()}“ aktiv (${enrichedDestinations.length} Regionen):`
+                    : 'Länder-Spezial direkt wählen:'}
+                </span>
+                {[
+                  { label: 'Alle Ziele', value: '', defaultDest: 'palma-mallorca' },
+                  { label: 'Spanien (4 Regionen)', value: 'Spanien', defaultDest: 'palma-mallorca' },
+                  { label: 'Türkei (4 Regionen)', value: 'Türkei', defaultDest: 'antalya-riviera' },
+                  { label: 'Italien (4 Regionen)', value: 'Italien', defaultDest: 'rom-latium' },
+                ].map((item) => {
+                  const isActive =
+                    searchQuery.trim().toLowerCase() === item.value.toLowerCase();
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery(item.value);
+                        setSelectedRegion('Alle');
+                        setActiveDestId(item.defaultDest);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-white hover:bg-blue-100 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {searchQuery.trim() && enrichedDestinations.length > 1 && (
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="text-slate-500 font-medium">Region im Rechner:</span>
+                  {enrichedDestinations.slice(0, 5).map(({ dest }) => (
+                    <button
+                      key={dest.id}
+                      type="button"
+                      onClick={() => setActiveDestId(dest.id)}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                        activeDestination.id === dest.id
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      {dest.city.split('&')[0].split(',')[0].trim()}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Interactive Search & Optimization Control Matrix */}
@@ -995,6 +1147,125 @@ export default function App() {
               )}
             </form>
 
+            {/* Instant Top-of-Page Country / Destination Results (visible immediately when ?ziel=Spanien, /spanien, etc. is opened) */}
+            {searchQuery.trim() !== '' && enrichedDestinations.length > 0 && (
+              <div className="mt-6 bg-blue-950 text-white rounded-2xl p-5 border border-blue-800 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div>
+                    <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                      Direkt-Angebote für „{searchQuery.trim()}“ ({durationNights} Nächte ab {activeHub.name})
+                    </span>
+                    <h2 className="text-lg sm:text-xl font-bold text-white mt-0.5">
+                      Wählen Sie Ihre Wunsch-Region in {searchQuery.trim()} — sofort buchbar bei Ihren Partnern
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-blue-100 text-xs font-semibold rounded-lg border border-blue-700 transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+                  >
+                    Alle Länder anzeigen ×
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  {enrichedDestinations.map(({ dest, calc }) => {
+                    const cardLinks = buildProviderBookingLinks({
+                      originCode: calc.chosenRoute.outbound.originCode,
+                      destCode: dest.iata,
+                      destCity: dest.city,
+                      hotelName: calc.cheapestHotel.name,
+                      carrierName: calc.chosenRoute.outbound.carrier,
+                      departureDateStr: calc.lowestDateStr,
+                      durationNights,
+                      travelers,
+                      userCurrency,
+                      affiliateConfig,
+                    });
+                    const isSelected = activeDestination.id === dest.id;
+
+                    return (
+                      <div
+                        key={dest.id}
+                        onClick={() => handleSelectDestinationCard(dest.id, 'routenoptimierer')}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleSelectDestinationCard(dest.id, 'routenoptimierer');
+                          }
+                        }}
+                        className={`rounded-xl p-4 transition-all cursor-pointer flex flex-col justify-between border ${
+                          isSelected
+                            ? 'bg-slate-900 border-emerald-400 ring-2 ring-emerald-400/30'
+                            : 'bg-slate-900/90 hover:bg-slate-900 border-slate-800'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between text-[11px] text-slate-400">
+                            <span>
+                              {dest.country} · {dest.iata}
+                            </span>
+                            <span className="font-mono text-emerald-400 font-semibold">
+                              -{calc.savingsPct}% Sparvorteil
+                            </span>
+                          </div>
+                          <h3 className="text-base font-bold text-white mt-1 leading-snug">
+                            {dest.city}
+                          </h3>
+                          <div className="mt-2 flex items-baseline justify-between">
+                            <span className="text-xs text-slate-300">
+                              Flug + {durationNights} Nächte:
+                            </span>
+                            <span className="text-lg font-mono font-bold text-emerald-400 tabular-nums">
+                              {formatMoney(calc.totalPerPerson, userCurrency)} p.P.
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                            {calc.cheapestHotel.name} ({calc.cheapestHotel.boardType})
+                          </p>
+                        </div>
+
+                        <div
+                          className="mt-3 pt-2.5 border-t border-slate-800 flex flex-col gap-1.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <a
+                            href={cardLinks.bestDealDirectUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5"
+                          >
+                            <span>Direkt zu {cardLinks.bestDealProviderName}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <a
+                              href={cardLinks.check24HolidayUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
+                            >
+                              CHECK24
+                            </a>
+                            <a
+                              href={cardLinks.abInDenUrlaubUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="py-1 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded text-center transition-colors"
+                            >
+                              Ab in den Urlaub
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Interactive Currency Converter & Local Exchange Rate Optimizer */}
             <div id="waehrungsrechner" className="mt-6">
               <CurrencyConverterPanel
@@ -1094,30 +1365,51 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {CURATED_COMPLETE_PACKAGES.map((pkg) => {
-                  const pkgLinks = buildProviderBookingLinks({
-                    originCode,
-                    destCode:
-                      pkg.searchKeyword === 'Bangkok'
-                        ? 'BKK'
-                        : pkg.searchKeyword === 'Palma'
-                        ? 'PMI'
-                        : pkg.searchKeyword === 'Antalya'
-                        ? 'AYT'
-                        : pkg.searchKeyword === 'Hurghada'
-                        ? 'HRG'
-                        : pkg.searchKeyword === 'New York'
-                        ? 'JFK'
-                        : 'DXB',
-                    destCity: pkg.cityShort,
-                    hotelName: pkg.cityShort,
-                    carrierName: 'Lufthansa',
-                    departureDateStr: selectedDateStr,
-                    durationNights: pkg.nights,
-                    travelers,
-                    userCurrency,
-                    affiliateConfig,
-                  });
+                {(() => {
+                  const qLower = searchQuery.trim().toLowerCase();
+                  const matchingPackages =
+                    qLower === ''
+                      ? CURATED_COMPLETE_PACKAGES.slice(0, 6)
+                      : CURATED_COMPLETE_PACKAGES.filter(
+                          (pkg) =>
+                            pkg.country.toLowerCase().includes(qLower) ||
+                            pkg.cityShort.toLowerCase().includes(qLower) ||
+                            pkg.searchKeyword.toLowerCase().includes(qLower)
+                        );
+                  const packagesToDisplay =
+                    matchingPackages.length > 0
+                      ? matchingPackages
+                      : CURATED_COMPLETE_PACKAGES.slice(0, 6);
+
+                  const iataByKeyword: Record<string, string> = {
+                    Bangkok: 'BKK',
+                    Palma: 'PMI',
+                    Teneriffa: 'TFS',
+                    Málaga: 'AGP',
+                    Antalya: 'AYT',
+                    Istanbul: 'SAW',
+                    Izmir: 'ADB',
+                    Rom: 'FCO',
+                    Neapel: 'NAP',
+                    Sizilien: 'CTA',
+                    Hurghada: 'HRG',
+                    'New York': 'JFK',
+                    Dubai: 'DXB',
+                  };
+
+                  return packagesToDisplay.map((pkg) => {
+                    const pkgLinks = buildProviderBookingLinks({
+                      originCode,
+                      destCode: iataByKeyword[pkg.searchKeyword] || 'PMI',
+                      destCity: pkg.cityShort,
+                      hotelName: pkg.cityShort,
+                      carrierName: 'Lufthansa',
+                      departureDateStr: selectedDateStr,
+                      durationNights: pkg.nights,
+                      travelers,
+                      userCurrency,
+                      affiliateConfig,
+                    });
 
                   return (
                     <div
@@ -1178,7 +1470,8 @@ export default function App() {
                       </div>
                     </div>
                   );
-                })}
+                });
+                })()}
               </div>
             </div>
 

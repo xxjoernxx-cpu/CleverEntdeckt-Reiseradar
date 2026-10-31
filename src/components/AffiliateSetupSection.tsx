@@ -73,6 +73,7 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
 
   const [savedNotice, setSavedNotice] = useState<boolean>(false);
   const [copiedLinkKey, setCopiedLinkKey] = useState<string>('');
+  const [embedTargetDestination, setEmbedTargetDestination] = useState<string>('');
 
   // Interactive Revenue Simulator State
   const [monthlyVisitors, setMonthlyVisitors] = useState<number>(3500);
@@ -917,7 +918,7 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
               </div>
             </div>
 
-            {/* 1-Click Homepage Embed Code Generator (automatically includes user's affiliate parameters) */}
+            {/* 1-Click Homepage Embed Code Generator (with Country Pre-selection for Spain, Turkey, Italy reports) */}
             {(() => {
               const baseAppUrl =
                 typeof window !== 'undefined' &&
@@ -925,19 +926,28 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                 !window.location.origin.includes('run.app')
                   ? window.location.origin
                   : 'https://cleverentdeckt-reiseradar.netlify.app';
-              const fullEmbedUrl = `${baseAppUrl}/?view=public`;
+              const trimmedTarget = embedTargetDestination.trim();
+              const fullEmbedUrl = trimmedTarget
+                ? `${baseAppUrl}/?view=public&ziel=${encodeURIComponent(trimmedTarget)}`
+                : `${baseAppUrl}/?view=public`;
 
-              const iframeCode = `<div style="width: 100%; max-width: 1400px; margin: 0 auto;">\n  <iframe\n    src="${fullEmbedUrl}"\n    width="100%"\n    height="1850"\n    style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; display: block;"\n    loading="lazy"\n    allow="clipboard-write"\n    title="CleverEntdeckt, Sparflug & Reiseradar"\n  ></iframe>\n</div>`;
+              const iframeTitle = trimmedTarget
+                ? `CleverEntdeckt – Günstige Reisen nach ${trimmedTarget}`
+                : 'CleverEntdeckt, Sparflug & Reiseradar';
+
+              const iframeCode = `<div style="width: 100%; max-width: 1400px; margin: 0 auto;">\n  <iframe\n    src="${fullEmbedUrl}"\n    width="100%"\n    height="1850"\n    style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; display: block;"\n    loading="lazy"\n    allow="clipboard-write"\n    title="${iframeTitle}"\n  ></iframe>\n</div>`;
 
               return (
-                <div className="bg-slate-900 text-white rounded-xl p-4 space-y-2.5">
+                <div className="bg-slate-900 text-white rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <span className="text-[11px] font-semibold text-emerald-400 block">
-                        Fertiger Code für Ihre Homepage (WordPress, Wix, Jimdo, HTML)
+                        Fertiger Code für Ihre Homepage & Länderberichte (WordPress, HTML)
                       </span>
                       <h4 className="text-xs font-bold text-white">
-                        Homepage-Einbettungscode (inkl. Ihrer Affiliate-Links)
+                        {trimmedTarget
+                          ? `Einbettungscode direkt für „${trimmedTarget}“ (ohne Neueingabe für Besucher)`
+                          : 'Homepage-Einbettungscode (Alle Reiseziele)'}
                       </h4>
                     </div>
                     <button
@@ -951,11 +961,75 @@ export const AffiliateSetupSection: React.FC<AffiliateSetupSectionProps> = ({
                       </span>
                     </button>
                   </div>
+
+                  {/* Country / Article Page Selector */}
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-2.5 space-y-2">
+                    <span className="text-[11px] font-semibold text-slate-300 block">
+                      Für welche Seite auf Ihrer Homepage möchten Sie den Code kopieren?
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[
+                        { label: 'Hauptseite (Alle Ziele)', value: '' },
+                        { label: 'Spanien-Bericht', value: 'Spanien' },
+                        { label: 'Türkei-Bericht', value: 'Türkei' },
+                        { label: 'Italien-Bericht', value: 'Italien' },
+                      ].map((preset) => {
+                        const isSelected =
+                          embedTargetDestination.trim().toLowerCase() ===
+                          preset.value.toLowerCase();
+                        return (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => setEmbedTargetDestination(preset.value)}
+                            className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                      <input
+                        type="text"
+                        value={embedTargetDestination}
+                        onChange={(e) => setEmbedTargetDestination(e.target.value)}
+                        placeholder="Oder anderes Land/Ziel..."
+                        aria-label="Anderes Land oder Reiseziel für Einbettungscode"
+                        className="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded text-[11px] text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 w-44"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Option A: Simple Direct URL Link (for Buttons or Text Links in WordPress) */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-emerald-400">
+                        Variante 1: Einfacher Direkt-Link (für Buttons oder Text-Links im Bericht)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyUrl('direct-country-url', fullEmbedUrl)}
+                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold rounded transition-colors inline-flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>
+                          {copiedLinkKey === 'direct-country-url'
+                            ? 'Link kopiert!'
+                            : 'Nur Link kopieren'}
+                        </span>
+                      </button>
+                    </div>
+                    <code className="block text-[11px] font-mono text-white break-all select-all">
+                      {fullEmbedUrl}
+                    </code>
+                  </div>
+
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Alle Affiliate-Links, die Sie links eintragen (inkl. Ab in den Urlaub, Trip.com,
-                    SnowTrex & eigene Partner), werden automatisch in diesen Code eingebaut. Dadurch
-                    nutzt <strong>jeder Besucher Ihrer Homepage</strong> automatisch Ihre
-                    Partner-Links.
+                    <strong>Variante 2 (HTML-Einbettung):</strong> Wenn Sie die komplette App direkt
+                    sichtbar in Ihren Bericht einbetten möchten, kopieren Sie diesen Code:
                   </p>
                   <pre className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-[10px] font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap break-all">
                     {iframeCode}
