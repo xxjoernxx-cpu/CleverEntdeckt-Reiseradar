@@ -59,8 +59,8 @@ export default function App() {
     if (typeof window === 'undefined') {
       return {
         travelType: 'pauschal' as PrimaryTravelType,
-        presetId: 'side-kumkoey-antalya',
-        destinationText: 'Side & Kumköy (Türkische Riviera / Antalya)',
+        presetId: '',
+        destinationText: '',
         originCode: 'FRA',
         adults: 2,
         fromGuideParam: '',
@@ -97,11 +97,12 @@ export default function App() {
     const rawAdults = parseInt(sp.get('erwachsene') || sp.get('adults') || '2', 10);
     const validAdults = !isNaN(rawAdults) && rawAdults >= 1 && rawAdults <= 6 ? rawAdults : 2;
 
+    // Neutral start page when called without URL parameters (Requirement 1)
     if (!effectiveQuery) {
       return {
         travelType,
-        presetId: 'side-kumkoey-antalya',
-        destinationText: 'Side & Kumköy (Türkische Riviera / Antalya)',
+        presetId: '',
+        destinationText: '',
         originCode: validOrigin,
         adults: validAdults,
         fromGuideParam: '',
@@ -110,18 +111,27 @@ export default function App() {
 
     const lower = effectiveQuery.toLowerCase();
     // Map CleverEntdeckt country & regional guides accurately
+    if (lower.includes('side') || lower.includes('kumköy') || lower.includes('kumkoey')) {
+      const preset = CLEVERENTDECKT_DESTINATIONS.find((d) => d.id === 'side-kumkoey-antalya')!;
+      return {
+        travelType,
+        presetId: preset.id,
+        destinationText: preset.label,
+        originCode: validOrigin,
+        adults: validAdults,
+        fromGuideParam: effectiveQuery,
+      };
+    }
+
     if (
       lower === 'tuerkei' ||
       lower === 'turkei' ||
       lower === 'türkei' ||
       lower === 'turkey' ||
-      lower.includes('side') ||
-      lower.includes('kumköy') ||
-      lower.includes('kumkoey') ||
       lower.includes('antalya') ||
       lower.includes('riviera')
     ) {
-      const preset = CLEVERENTDECKT_DESTINATIONS.find((d) => d.id === 'side-kumkoey-antalya')!;
+      const preset = CLEVERENTDECKT_DESTINATIONS.find((d) => d.id === 'antalya-belek-lara')!;
       return {
         travelType,
         presetId: preset.id,
@@ -199,16 +209,18 @@ export default function App() {
   const [addonFilter, setAddonFilter] = useState<AddonFilterType>('alle_passenden');
   const [sortOrder, setSortOrder] = useState<'deeplink_first' | 'alphabetical'>('deeplink_first');
   const [formError, setFormError] = useState<string>('');
-  const [lastQueryTime, setLastQueryTime] = useState<string>(() =>
-    new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-  );
   const [copiedPartnerId, setCopiedPartnerId] = useState<string | null>(null);
   const [guideBannerDismissed, setGuideBannerDismissed] = useState<boolean>(false);
 
-  // Optional Currency Helper State (Section 7: moved to optional collapsible section)
+  // Optional Currency Helper State
   const [isCurrencyOpen, setIsCurrencyOpen] = useState<boolean>(false);
   const [currencyAmountEur, setCurrencyAmountEur] = useState<number>(500);
   const [targetCurrency, setTargetCurrency] = useState<UserCurrencyCode>('TRY');
+
+  const hasActiveDestination = Boolean(
+    destinationText.trim().length > 0 ||
+      (selectedPresetId && selectedPresetId !== 'custom')
+  );
 
   const resolvedDest = useMemo(
     () => resolveDestinationInfo(destinationText, selectedPresetId),
@@ -257,7 +269,7 @@ export default function App() {
       if (addonFilter === 'camping_camper') {
         return offer.isSpecialistAddon === 'camping';
       }
-      // Standard: show primary providers matching the selected travelType
+      // Standard: show ONLY primary providers matching the selected travelType
       return offer.primaryForTypes.includes(travelType);
     });
 
@@ -265,13 +277,20 @@ export default function App() {
       list = [...list].sort((a, b) => a.partnerName.localeCompare(b.partnerName, 'de'));
     } else {
       // Sort by technical parameter transfer support first (never by affiliate commission)
-      list = [...list].sort((a, b) => Number(b.supportsFullDeepLink) - Number(a.supportsFullDeepLink));
+      list = [...list].sort(
+        (a, b) => Number(b.supportsFullDeepLink) - Number(a.supportsFullDeepLink)
+      );
     }
 
     return list;
   }, [allPartnerOffers, addonFilter, travelType, sortOrder]);
 
   const handleSelectPreset = (presetId: string) => {
+    if (!presetId) {
+      setSelectedPresetId('');
+      setDestinationText('');
+      return;
+    }
     setSelectedPresetId(presetId);
     const found = CLEVERENTDECKT_DESTINATIONS.find((d) => d.id === presetId);
     if (found) {
@@ -285,7 +304,7 @@ export default function App() {
 
   const handleDestinationInputChange = (val: string) => {
     setDestinationText(val);
-    setSelectedPresetId('custom');
+    setSelectedPresetId(val.trim() ? 'custom' : '');
     if (val.trim()) {
       setFormError('');
     }
@@ -323,7 +342,7 @@ export default function App() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!destinationText.trim()) {
-      setFormError('Bitte gib ein gewünschtes Reiseziel (Land, Region oder Ort) ein.');
+      setFormError('Bitte wähle ein Reiseziel aus oder gib dein Wunschziel ein.');
       return;
     }
     if (!checkInDate || !checkOutDate || checkOutDate <= checkInDate) {
@@ -333,9 +352,6 @@ export default function App() {
 
     setFormError('');
     setAddonFilter('alle_passenden');
-    setLastQueryTime(
-      new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-    );
     trackReiseRadarSearch(travelType, resolvedDest.searchTerm);
 
     const resultsEl = document.getElementById('angebote');
@@ -345,7 +361,7 @@ export default function App() {
   };
 
   const handleCopyDestination = (partnerId: string, textToCopy: string) => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && textToCopy) {
       navigator.clipboard.writeText(textToCopy).catch(() => {});
       setCopiedPartnerId(partnerId);
       setTimeout(() => setCopiedPartnerId(null), 2500);
@@ -368,6 +384,22 @@ export default function App() {
       : travelType === 'hotel'
       ? 'Hotel (Eigenanreise)'
       : 'Flug (Hin- & Rückflug)';
+
+  const primaryResultsHeading =
+    travelType === 'pauschal'
+      ? 'Passende Pauschalreise-Anbieter'
+      : travelType === 'hotel'
+      ? 'Passende Hotelanbieter'
+      : 'Passende Fluganbieter';
+
+  const currentSectionHeading =
+    addonFilter === 'inkl_mietwagen'
+      ? 'Mietwagen-Anbieter am Urlaubsort'
+      : addonFilter === 'aktiv_wandern'
+      ? 'Anbieter für Wanderreisen, Rundreisen & Ausflüge'
+      : addonFilter === 'camping_camper'
+      ? 'Anbieter für Campingplätze & Wohnmobile'
+      : primaryResultsHeading;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900">
@@ -447,7 +479,7 @@ export default function App() {
             </p>
 
             {/* Visible pre-selection notice when arriving via ?ziel=... link (Requirement 8) */}
-            {initialUrlState.fromGuideParam && !guideBannerDismissed && (
+            {initialUrlState.fromGuideParam && !guideBannerDismissed && hasActiveDestination && (
               <div
                 role="status"
                 className="mt-4 bg-white/10 border border-white/25 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-sm"
@@ -465,7 +497,7 @@ export default function App() {
                   onClick={() => setGuideBannerDismissed(true)}
                   className="text-xs underline text-white/85 hover:text-white cursor-pointer"
                 >
-                  Ausblenden
+                  Hinweis ausblenden
                 </button>
               </div>
             )}
@@ -517,7 +549,10 @@ export default function App() {
                         type="button"
                         role="radio"
                         aria-checked={active}
-                        onClick={() => setTravelType(item.id)}
+                        onClick={() => {
+                          setTravelType(item.id);
+                          setAddonFilter('alle_passenden');
+                        }}
                         className={`min-h-[52px] px-3 py-2.5 rounded-xl border text-left transition-colors cursor-pointer flex items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B3C6D] ${
                           active
                             ? 'bg-[#0B3C6D] text-white border-[#0B3C6D]'
@@ -554,7 +589,7 @@ export default function App() {
                     htmlFor="destination-select"
                     className="block text-sm font-bold text-slate-800 mb-1.5"
                   >
-                    2. Reiseziel (Land, Region oder Stadt)
+                    2. Wohin möchtest du reisen? (Land, Region oder Stadt)
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <select
@@ -567,9 +602,10 @@ export default function App() {
                           handleSelectPreset(e.target.value);
                         }
                       }}
-                      aria-label="Beliebtes Reiseziel auswählen"
+                      aria-label="Reiseziel aus Liste auswählen"
                       className="w-full min-h-[48px] px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-base text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0B3C6D]"
                     >
+                      <option value="">Wohin möchtest du reisen? (Auswählen…)</option>
                       <optgroup label="Türkei (CleverEntdeckt Empfehlung)">
                         {CLEVERENTDECKT_DESTINATIONS.filter(
                           (d) => d.countryGroup === 'Türkei'
@@ -625,8 +661,8 @@ export default function App() {
                         type="text"
                         value={destinationText}
                         onChange={(e) => handleDestinationInputChange(e.target.value)}
-                        placeholder="z.B. Side, Antalya, Mallorca, Rom…"
-                        aria-label="Reiseziel frei eingeben oder anpassen"
+                        placeholder="Wohin möchtest du reisen? (z. B. Mallorca, Side, Rom…)"
+                        aria-label="Reiseziel frei eingeben"
                         className="w-full min-h-[48px] pl-10 pr-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3C6D]"
                       />
                     </div>
@@ -637,6 +673,7 @@ export default function App() {
                     <span className="text-slate-500 font-medium mr-1">Schnellwahl:</span>
                     {[
                       { id: 'side-kumkoey-antalya', short: 'Side & Kumköy (Antalya)' },
+                      { id: 'antalya-belek-lara', short: 'Türkei (Riviera)' },
                       { id: 'mallorca-balearen', short: 'Mallorca (Spanien)' },
                       { id: 'teneriffa-kanaren', short: 'Teneriffa' },
                       { id: 'rom-latium', short: 'Rom (Italien)' },
@@ -796,7 +833,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Dynamische Altersauswahl für jedes Kind (Anforderung 2) */}
+              {/* Dynamische Altersauswahl für jedes Kind */}
               {childrenAges.length > 0 && (
                 <div className="mt-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                   <span className="block text-xs font-bold text-slate-700 mb-2">
@@ -854,86 +891,14 @@ export default function App() {
           </div>
         </section>
 
-        {/* SECTION 2: Übersichtliche Darstellung der passenden Reiseangebote (Abschnitte 3, 4 & 5) */}
+        {/* SECTION 2: Übersichtliche Darstellung der passenden Reiseangebote */}
         <section id="angebote" className="py-8 sm:py-12 px-4 sm:px-6">
           <div className="max-w-6xl mx-auto">
-            {/* Aktuelle Suchzusammenfassung & Schnelle Korrektur */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 mb-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <div className="text-xs font-medium text-slate-500">
-                    <span>Aktuelle Auswahl</span>
-                    <span aria-hidden="true"> · </span>
-                    <span>Abfragezeitpunkt: {lastQueryTime} Uhr</span>
-                  </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-[#0B3C6D] mt-1">
-                    {resolvedDest.displayTitle}
-                  </h2>
-                  <p className="text-sm sm:text-base text-slate-700 mt-1">
-                    <span>{travelTypeLabel}</span>
-                    {travelType !== 'hotel' ? (
-                      <>
-                        <span aria-hidden="true"> · </span>
-                        <span>Ab {selectedAirportObj.label}</span>
-                      </>
-                    ) : (
-                      boardFilter !== 'Beliebig' && (
-                        <>
-                          <span aria-hidden="true"> · </span>
-                          <span>Verpflegung: {boardFilter}</span>
-                        </>
-                      )
-                    )}
-                    <span aria-hidden="true"> · </span>
-                    <span className="tabular-nums">
-                      {formatGermanDate(checkInDate)} bis {formatGermanDate(checkOutDate)} (
-                      {durationNights} {durationNights === 1 ? 'Nacht' : 'Nächte'})
-                    </span>
-                    <span aria-hidden="true"> · </span>
-                    <span>
-                      {adults} {adults === 1 ? 'Erwachsener' : 'Erwachsene'}
-                      {childrenAges.length > 0
-                        ? `, ${childrenAges.length} ${
-                            childrenAges.length === 1 ? 'Kind' : 'Kinder'
-                          } (${childrenAges.map((a) => `${a} J.`).join(', ')})`
-                        : ''}
-                    </span>
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => scrollToId('suche')}
-                    className="min-h-[44px] px-4 py-2 text-sm font-semibold text-[#0B3C6D] bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Suche oben anpassen</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Ehrlicher Hinweis zur Preisprüfung beim Anbieter (Abschnitt 3 & 4) */}
-              <div className="mt-4 pt-4 border-t border-slate-200 flex items-start gap-3 text-xs sm:text-sm text-slate-700">
-                <Info className="w-5 h-5 text-[#0B3C6D] shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-slate-900">
-                    Aktuelle Preise direkt beim Anbieter prüfen:
-                  </strong>{' '}
-                  Da Reiseveranstalter und Airlines ihre Kontingente, Gepäcktarife und Transfers im
-                  Sekundentakt aktualisieren, zeigen wir hier bewusst{' '}
-                  <strong>keine geschätzten oder erfundenen Ab-Preise</strong>. Mit einem Klick auf
-                  deinen Wunsch-Partner werden deine Suchangaben direkt übergeben und du siehst dort
-                  den tatsächlich buchbaren Endpreis.
-                </div>
-              </div>
-            </div>
-
-            {/* Filter- & Sortierleiste (Abschnitt 10.B) */}
+            {/* Kategorien-Wahl: Hauptsuchergebnisse (Reiseart) vs. getrennte Spezialkategorien */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div
                 role="tablist"
-                aria-label="Angebotskategorien filtern"
+                aria-label="Angebotskategorien"
                 className="flex flex-wrap items-center gap-2"
               >
                 <button
@@ -947,7 +912,21 @@ export default function App() {
                       : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
                   }`}
                 >
-                  Passende Anbieter ({travelType === 'pauschal' ? 'Pauschalreise' : travelType === 'hotel' ? 'Hotel' : 'Flug'})
+                  {primaryResultsHeading}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={addonFilter === 'aktiv_wandern'}
+                  onClick={() => setAddonFilter('aktiv_wandern')}
+                  className={`min-h-[44px] px-3.5 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap ${
+                    addonFilter === 'aktiv_wandern'
+                      ? 'bg-[#0B3C6D] text-white'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
+                  }`}
+                >
+                  <Mountain className="w-4 h-4" />
+                  <span>Wander- & Rundreisen</span>
                 </button>
                 <button
                   type="button"
@@ -966,20 +945,6 @@ export default function App() {
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={addonFilter === 'aktiv_wandern'}
-                  onClick={() => setAddonFilter('aktiv_wandern')}
-                  className={`min-h-[44px] px-3.5 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap ${
-                    addonFilter === 'aktiv_wandern'
-                      ? 'bg-[#0B3C6D] text-white'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
-                  }`}
-                >
-                  <Mountain className="w-4 h-4" />
-                  <span>Rundreisen, Wandern & Ausflüge</span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
                   aria-selected={addonFilter === 'camping_camper'}
                   onClick={() => setAddonFilter('camping_camper')}
                   className={`min-h-[44px] px-3.5 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap ${
@@ -993,171 +958,275 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <label htmlFor="sort-select" className="text-xs font-semibold text-slate-600">
-                  Sortierung:
-                </label>
-                <select
-                  id="sort-select"
-                  value={sortOrder}
-                  onChange={(e) =>
-                    setSortOrder(e.target.value as 'deeplink_first' | 'alphabetical')
-                  }
-                  className="min-h-[44px] px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B3C6D]"
-                >
-                  <option value="deeplink_first">Direkte Datenübernahme zuerst</option>
-                  <option value="alphabetical">Alphabetisch (A–Z)</option>
-                </select>
-              </div>
+              {(hasActiveDestination || addonFilter !== 'alle_passenden') && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <label htmlFor="sort-select" className="text-xs font-semibold text-slate-600">
+                    Sortierung:
+                  </label>
+                  <select
+                    id="sort-select"
+                    value={sortOrder}
+                    onChange={(e) =>
+                      setSortOrder(e.target.value as 'deeplink_first' | 'alphabetical')
+                    }
+                    className="min-h-[44px] px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B3C6D]"
+                  >
+                    <option value="deeplink_first">Direkte Datenübernahme zuerst</option>
+                    <option value="alphabetical">Alphabetisch (A–Z)</option>
+                  </select>
+                </div>
+              )}
             </div>
 
-            {/* Partner Offer Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {filteredAndSortedOffers.map((offer) => (
-                <article
-                  key={offer.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-2xs"
-                >
-                  <div>
-                    {/* Quiet unboxed metadata header */}
-                    <div className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5">
-                      <span className="font-semibold text-[#0B3C6D]">{offer.categoryLabel}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {offer.supportsFullDeepLink
-                          ? 'Automatische Suchübernahme'
-                          : 'Weiterleitung zur Partnersuche'}
-                      </span>
-                    </div>
-
-                    <h3 className="text-xl font-bold text-slate-900 mt-1.5">{offer.partnerName}</h3>
-
-                    <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                      {offer.description}
-                    </p>
-
-                    {/* Übersicht der Suchparameter & Leistungen (Abschnitt 3 & 5) */}
-                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-2.5 text-xs sm:text-sm">
-                      <div>
-                        <span className="font-semibold text-slate-800">Enthaltene Leistungen & Optionen: </span>
-                        <span className="text-slate-600">{offer.includedServicesNote}</span>
-                      </div>
-
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-semibold text-slate-800">
-                            Wird im Link übergeben:{' '}
-                          </span>
-                          <span className="text-slate-600">
-                            {offer.transferredParams.join(' · ')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {offer.manualParamsAtProvider.length > 0 && (
-                        <div className="flex items-start justify-between gap-2 bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-xs text-slate-700">
-                          <div>
-                            <strong className="text-slate-900">
-                              Hinweis zur Eingabe beim Anbieter:{' '}
-                            </strong>
-                            Bitte beim Anbieter auswählen:{' '}
-                            <span>{offer.manualParamsAtProvider.join(' · ')}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyDestination(offer.id, resolvedDest.searchTerm)}
-                            title="Reiseziel in die Zwischenablage kopieren"
-                            className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 shrink-0 inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            {copiedPartnerId === offer.id ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-700" />
-                                <span>Kopiert</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>Ziel kopieren</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Preisstatus & Weiterleitungs-Button */}
-                  <div className="mt-6 pt-4 border-t border-slate-100">
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
-                      <span>Preisstatus: Aktuelle Preise direkt beim Anbieter prüfen</span>
-                      <span>*Anzeige</span>
-                    </div>
-
-                    <a
-                      href={offer.url}
-                      target="_blank"
-                      rel="sponsored noopener noreferrer"
-                      onClick={() =>
-                        trackReiseRadarPartnerClick(
-                          offer.id,
-                          offer.partnerName,
-                          travelType,
-                          resolvedDest.searchTerm
-                        )
-                      }
-                      className="w-full min-h-[48px] px-5 py-3 bg-[#0B3C6D] hover:bg-[#082d54] text-white font-bold text-sm sm:text-base rounded-xl transition-colors flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F4B400]"
+            {/* Neutrale Startansicht vor Auswahl eines Reiseziels (Anforderung 1) */}
+            {!hasActiveDestination && addonFilter === 'alle_passenden' ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 text-center">
+                <MapPin className="w-8 h-8 text-[#0B3C6D] mx-auto mb-2.5" />
+                <h2 className="text-xl sm:text-2xl font-bold text-[#0B3C6D]">
+                  Wohin möchtest du reisen?
+                </h2>
+                <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-xl mx-auto">
+                  Bitte wähle oben im Suchformular ein Reiseziel aus oder gib dein Wunschziel frei
+                  ein. Danach erscheinen hier sofort die passenden{' '}
+                  <strong>
+                    {travelType === 'pauschal'
+                      ? 'Pauschalreise-Anbieter'
+                      : travelType === 'hotel'
+                      ? 'Hotelanbieter'
+                      : 'Fluganbieter'}
+                  </strong>{' '}
+                  mit deinen Reisedaten.
+                </p>
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                  {[
+                    { id: 'side-kumkoey-antalya', label: 'Side & Kumköy (Antalya)' },
+                    { id: 'antalya-belek-lara', label: 'Türkei (Türkische Riviera)' },
+                    { id: 'mallorca-balearen', label: 'Mallorca (Spanien)' },
+                    { id: 'rom-latium', label: 'Rom (Italien)' },
+                    { id: 'kreta-griechenland', label: 'Kreta (Griechenland)' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelectPreset(item.id)}
+                      className="min-h-[42px] px-4 py-2 bg-slate-100 hover:bg-[#0B3C6D] hover:text-white text-slate-800 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
                     >
-                      <span>{offer.ctaLabel}</span>
-                      <ExternalLink className="w-4 h-4 shrink-0 text-[#F4B400]" />
-                    </a>
-
-                    {offer.secondaryAction && (
-                      <a
-                        href={offer.secondaryAction.url}
-                        target="_blank"
-                        rel="sponsored noopener noreferrer"
-                        onClick={() =>
-                          trackReiseRadarPartnerClick(
-                            `${offer.id}-secondary`,
-                            offer.partnerName,
-                            travelType,
-                            resolvedDest.searchTerm
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Deine Reiseauswahl (Anforderung 5: ohne Uhrzeit / ohne „Abfragezeitpunkt“) */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 mb-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wide text-[#0B3C6D]">
+                        Deine Reiseauswahl
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                        {currentSectionHeading}
+                        {hasActiveDestination ? ` – ${resolvedDest.displayTitle}` : ''}
+                      </h2>
+                      <p className="text-sm sm:text-base text-slate-700 mt-1">
+                        <span>{travelTypeLabel}</span>
+                        {travelType !== 'hotel' ? (
+                          <>
+                            <span aria-hidden="true"> · </span>
+                            <span>Ab {selectedAirportObj.label}</span>
+                          </>
+                        ) : (
+                          boardFilter !== 'Beliebig' && (
+                            <>
+                              <span aria-hidden="true"> · </span>
+                              <span>Verpflegung: {boardFilter}</span>
+                            </>
                           )
-                        }
-                        className="mt-2.5 w-full min-h-[42px] px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B3C6D] font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <span>{offer.secondaryAction.label}</span>
-                        <ExternalLink className="w-3.5 h-3.5 shrink-0 text-[#0B3C6D]" />
-                      </a>
-                    )}
+                        )}
+                        <span aria-hidden="true"> · </span>
+                        <span className="tabular-nums">
+                          {formatGermanDate(checkInDate)} bis {formatGermanDate(checkOutDate)} (
+                          {durationNights} {durationNights === 1 ? 'Nacht' : 'Nächte'})
+                        </span>
+                        <span aria-hidden="true"> · </span>
+                        <span>
+                          {adults} {adults === 1 ? 'Erwachsener' : 'Erwachsene'}
+                          {childrenAges.length > 0
+                            ? `, ${childrenAges.length} ${
+                                childrenAges.length === 1 ? 'Kind' : 'Kinder'
+                              } (${childrenAges.map((a) => `${a} J.`).join(', ')})`
+                            : ''}
+                        </span>
+                      </p>
+                    </div>
 
-                    {offer.additionalActions?.map((action, idx) => (
-                      <a
-                        key={action.url}
-                        href={action.url}
-                        target="_blank"
-                        rel="sponsored noopener noreferrer"
-                        onClick={() =>
-                          trackReiseRadarPartnerClick(
-                            `${offer.id}-extra-${idx}`,
-                            offer.partnerName,
-                            travelType,
-                            resolvedDest.searchTerm
-                          )
-                        }
-                        className="mt-2 w-full min-h-[42px] px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B3C6D] font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => scrollToId('suche')}
+                        className="min-h-[44px] px-4 py-2 text-sm font-semibold text-[#0B3C6D] bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
                       >
-                        <span>{action.label}</span>
-                        <ExternalLink className="w-3.5 h-3.5 shrink-0 text-[#0B3C6D]" />
-                      </a>
-                    ))}
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Suche oben anpassen</span>
+                      </button>
+                    </div>
                   </div>
-                </article>
-              ))}
-            </div>
 
-            {/* Pflicht-Affiliate-Kennzeichnung direkt unter den Angeboten (Abschnitt 9) */}
+                  {/* Ehrlicher Hinweis zur Preisprüfung beim Anbieter */}
+                  <div className="mt-4 pt-4 border-t border-slate-200 flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
+                    <Info className="w-4 h-4 text-[#0B3C6D] shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900">
+                        Aktuelle Preise direkt beim Anbieter prüfen:
+                      </strong>{' '}
+                      Verfügbarkeit und tatsächlicher Endpreis werden direkt beim jeweiligen
+                      Reiseanbieter angezeigt.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vereinfachte Partnerkarten (Anforderung 4) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {filteredAndSortedOffers.map((offer) => (
+                    <article
+                      key={offer.id}
+                      className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-2xs"
+                    >
+                      <div>
+                        {/* 1. Name des Reiseanbieters + dezente Affiliate-Kennzeichnung */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-xs font-semibold text-[#0B3C6D]">
+                              {offer.categoryLabel}
+                            </span>
+                            <h3 className="text-xl font-bold text-slate-900 mt-0.5">
+                              {offer.partnerName}
+                            </h3>
+                          </div>
+                          <span className="text-xs text-slate-400 shrink-0">*Anzeige</span>
+                        </div>
+
+                        {/* 2. Kurze Erklärung, welche Reisen dort angeboten werden */}
+                        <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                          {offer.description}
+                        </p>
+
+                        {/* 3. Automatisch übernommen & 4. Ggf. noch beim Anbieter einzugeben */}
+                        <div className="mt-4 pt-3.5 border-t border-slate-100 space-y-2 text-xs sm:text-sm">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-semibold text-slate-800">
+                                Automatisch übernommen:{' '}
+                              </span>
+                              <span className="text-slate-600">
+                                {offer.transferredParams.join(' · ')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {offer.manualParamsAtProvider.length > 0 && (
+                            <div className="flex items-start justify-between gap-2 bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-xs text-slate-700">
+                              <div>
+                                <strong className="text-slate-900">Beim Anbieter wählen: </strong>
+                                <span>{offer.manualParamsAtProvider.join(' · ')}</span>
+                              </div>
+                              {hasActiveDestination && resolvedDest.searchTerm && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCopyDestination(offer.id, resolvedDest.searchTerm)
+                                  }
+                                  title="Reiseziel kopieren"
+                                  className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 shrink-0 inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  {copiedPartnerId === offer.id ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5 text-emerald-700" />
+                                      <span>Kopiert</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Ziel kopieren</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 5. Großer, deutlich sichtbarer Button „Angebote prüfen“ */}
+                      <div className="mt-5 pt-4 border-t border-slate-100">
+                        <a
+                          href={offer.url}
+                          target="_blank"
+                          rel="sponsored noopener noreferrer"
+                          onClick={() =>
+                            trackReiseRadarPartnerClick(
+                              offer.id,
+                              offer.partnerName,
+                              travelType,
+                              resolvedDest.searchTerm || 'Allgemein'
+                            )
+                          }
+                          className="w-full min-h-[48px] px-5 py-3 bg-[#0B3C6D] hover:bg-[#082d54] text-white font-bold text-sm sm:text-base rounded-xl transition-colors flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F4B400]"
+                        >
+                          <span>{offer.ctaLabel}</span>
+                          <ExternalLink className="w-4 h-4 shrink-0 text-[#F4B400]" />
+                        </a>
+
+                        {offer.secondaryAction && (
+                          <a
+                            href={offer.secondaryAction.url}
+                            target="_blank"
+                            rel="sponsored noopener noreferrer"
+                            onClick={() =>
+                              trackReiseRadarPartnerClick(
+                                `${offer.id}-secondary`,
+                                offer.partnerName,
+                                travelType,
+                                resolvedDest.searchTerm || 'Allgemein'
+                              )
+                            }
+                            className="mt-2.5 w-full min-h-[42px] px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B3C6D] font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <span>{offer.secondaryAction.label}</span>
+                            <ExternalLink className="w-3.5 h-3.5 shrink-0 text-[#0B3C6D]" />
+                          </a>
+                        )}
+
+                        {offer.additionalActions?.map((action, idx) => (
+                          <a
+                            key={action.url}
+                            href={action.url}
+                            target="_blank"
+                            rel="sponsored noopener noreferrer"
+                            onClick={() =>
+                              trackReiseRadarPartnerClick(
+                                `${offer.id}-extra-${idx}`,
+                                offer.partnerName,
+                                travelType,
+                                resolvedDest.searchTerm || 'Allgemein'
+                              )
+                            }
+                            className="mt-2 w-full min-h-[42px] px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B3C6D] font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <span>{action.label}</span>
+                            <ExternalLink className="w-3.5 h-3.5 shrink-0 text-[#0B3C6D]" />
+                          </a>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Pflicht-Affiliate-Kennzeichnung direkt unter den Angeboten */}
             <p className="mt-5 text-xs sm:text-sm text-slate-600 leading-relaxed">
               *Anzeige: Bei einer Buchung über unsere Partnerlinks können wir eine Provision
               erhalten. Für dich entstehen dadurch keine zusätzlichen Kosten durch CleverEntdeckt.

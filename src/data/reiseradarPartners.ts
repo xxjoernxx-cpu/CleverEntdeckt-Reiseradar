@@ -322,7 +322,12 @@ export function resolveDestinationInfo(destinationText: string, selectedPresetId
   const cleanInput = destinationText.trim();
   const presetById = CLEVERENTDECKT_DESTINATIONS.find((d) => d.id === selectedPresetId);
 
-  if (presetById && (!cleanInput || presetById.label.toLowerCase().includes(cleanInput.toLowerCase()) || presetById.searchTerm.toLowerCase() === cleanInput.toLowerCase())) {
+  if (
+    presetById &&
+    (!cleanInput ||
+      presetById.label.toLowerCase().includes(cleanInput.toLowerCase()) ||
+      presetById.searchTerm.toLowerCase() === cleanInput.toLowerCase())
+  ) {
     return {
       displayTitle: presetById.label,
       searchTerm: presetById.searchTerm,
@@ -332,8 +337,23 @@ export function resolveDestinationInfo(destinationText: string, selectedPresetId
     };
   }
 
+  if (!cleanInput) {
+    return {
+      displayTitle: 'Wohin möchtest du reisen?',
+      searchTerm: '',
+      country: '',
+      iata: 'PMI',
+      regionName: '',
+    };
+  }
+
   const lower = cleanInput.toLowerCase();
-  if (lower.includes('side') || lower.includes('kumköy') || lower.includes('kumkoey') || lower.includes('manavgat')) {
+  if (
+    lower.includes('side') ||
+    lower.includes('kumköy') ||
+    lower.includes('kumkoey') ||
+    lower.includes('manavgat')
+  ) {
     return {
       displayTitle: 'Side & Kumköy (Antalya / Türkische Riviera)',
       searchTerm: 'Side, Antalya',
@@ -342,7 +362,13 @@ export function resolveDestinationInfo(destinationText: string, selectedPresetId
       regionName: 'Türkische Riviera',
     };
   }
-  if (lower === 'türkei' || lower === 'tuerkei' || lower === 'turkei' || lower.includes('antalya') || lower.includes('türkische riviera')) {
+  if (
+    lower === 'türkei' ||
+    lower === 'tuerkei' ||
+    lower === 'turkei' ||
+    lower.includes('antalya') ||
+    lower.includes('türkische riviera')
+  ) {
     return {
       displayTitle: 'Türkische Riviera & Antalya (Türkei)',
       searchTerm: 'Antalya',
@@ -353,17 +379,17 @@ export function resolveDestinationInfo(destinationText: string, selectedPresetId
   }
   if (lower === 'spanien' || lower.includes('mallorca') || lower.includes('palma')) {
     return {
-      displayTitle: cleanInput || 'Spanien (Mallorca & Küsten)',
-      searchTerm: lower === 'spanien' ? 'Spanien' : cleanInput,
+      displayTitle: lower === 'spanien' ? 'Spanien (Mallorca, Kanaren & Festland)' : cleanInput,
+      searchTerm: lower === 'spanien' ? 'Mallorca' : cleanInput,
       country: 'Spanien',
       iata: 'PMI',
       regionName: 'Spanien / Balearen',
     };
   }
-  if (lower === 'italien') {
+  if (lower === 'italien' || lower === 'rom') {
     return {
-      displayTitle: 'Italien (Rom, Küsten & Seen)',
-      searchTerm: 'Italien',
+      displayTitle: lower === 'rom' ? 'Rom & Latium (Italien)' : 'Italien (Rom, Küsten & Seen)',
+      searchTerm: lower === 'rom' ? 'Rom' : 'Italien',
       country: 'Italien',
       iata: 'FCO',
       regionName: 'Italien',
@@ -389,10 +415,10 @@ export function resolveDestinationInfo(destinationText: string, selectedPresetId
   }
 
   return {
-    displayTitle: cleanInput || 'Side & Kumköy (Antalya)',
-    searchTerm: cleanInput || 'Side, Antalya',
-    country: cleanInput || 'Türkei',
-    iata: 'AYT',
+    displayTitle: cleanInput,
+    searchTerm: cleanInput,
+    country: cleanInput,
+    iata: 'FRA',
     regionName: 'Freie Zielsuche',
   };
 }
@@ -413,16 +439,62 @@ export function formatGermanDate(dateStr: string): string {
 
 function getCampingCountrySlug(country: string, searchTerm: string): string {
   const combined = `${country} ${searchTerm}`.toLowerCase();
-  if (combined.includes('spanien') || combined.includes('mallorca') || combined.includes('teneriffa') || combined.includes('barcelona') || combined.includes('andalusien')) return 'spanien';
-  if (combined.includes('italien') || combined.includes('rom') || combined.includes('sizilien') || combined.includes('gardasee') || combined.includes('amalfi') || combined.includes('sardinien')) return 'italien';
-  if (combined.includes('türkei') || combined.includes('tuerkei') || combined.includes('antalya') || combined.includes('side') || combined.includes('izmir') || combined.includes('bodrum')) return 'tuerkei';
-  if (combined.includes('kroatien') || combined.includes('istrien') || combined.includes('split') || combined.includes('dalmatien')) return 'kroatien';
-  if (combined.includes('griechenland') || combined.includes('kreta') || combined.includes('rhodos') || combined.includes('athen')) return 'griechenland';
-  if (combined.includes('portugal') || combined.includes('algarve') || combined.includes('lissabon')) return 'portugal';
-  if (combined.includes('österreich') || combined.includes('oesterreich') || combined.includes('tirol') || combined.includes('salzburg') || combined.includes('kärnten')) return 'oesterreich';
-  if (combined.includes('schweiz') || combined.includes('zürich') || combined.includes('wallis')) return 'schweiz';
-  if (combined.includes('frankreich') || combined.includes('korsika') || combined.includes('cote')) return 'frankreich';
-  if (combined.includes('polen') || combined.includes('krakau') || combined.includes('ostsee')) return 'polen';
+  if (
+    combined.includes('spanien') ||
+    combined.includes('mallorca') ||
+    combined.includes('teneriffa') ||
+    combined.includes('barcelona') ||
+    combined.includes('andalusien')
+  )
+    return 'spanien';
+  if (
+    combined.includes('italien') ||
+    combined.includes('rom') ||
+    combined.includes('sizilien') ||
+    combined.includes('gardasee') ||
+    combined.includes('amalfi') ||
+    combined.includes('sardinien')
+  )
+    return 'italien';
+  if (
+    combined.includes('türkei') ||
+    combined.includes('tuerkei') ||
+    combined.includes('antalya') ||
+    combined.includes('side') ||
+    combined.includes('izmir') ||
+    combined.includes('bodrum')
+  )
+    return 'tuerkei';
+  if (
+    combined.includes('kroatien') ||
+    combined.includes('istrien') ||
+    combined.includes('split') ||
+    combined.includes('dalmatien')
+  )
+    return 'kroatien';
+  if (
+    combined.includes('griechenland') ||
+    combined.includes('kreta') ||
+    combined.includes('rhodos') ||
+    combined.includes('athen')
+  )
+    return 'griechenland';
+  if (combined.includes('portugal') || combined.includes('algarve') || combined.includes('lissabon'))
+    return 'portugal';
+  if (
+    combined.includes('österreich') ||
+    combined.includes('oesterreich') ||
+    combined.includes('tirol') ||
+    combined.includes('salzburg') ||
+    combined.includes('kärnten')
+  )
+    return 'oesterreich';
+  if (combined.includes('schweiz') || combined.includes('zürich') || combined.includes('wallis'))
+    return 'schweiz';
+  if (combined.includes('frankreich') || combined.includes('korsika') || combined.includes('cote'))
+    return 'frankreich';
+  if (combined.includes('polen') || combined.includes('krakau') || combined.includes('ostsee'))
+    return 'polen';
   return 'deutschland';
 }
 
@@ -444,20 +516,20 @@ function resolveAbInDenUrlaubTarget(
     ) {
       return {
         targetUrl: 'https://www.ab-in-den-urlaub.de/hotels/europa/tuerkei/tuerkische-riviera',
-        targetLabel: 'Hotels an der Türkischen Riviera (Eigenanreise)',
+        targetLabel: 'Kategorieseite: Hotels an der Türkischen Riviera',
         hasRegionMatch: true,
       };
     }
     if (combined.includes('mallorca') || combined.includes('palma')) {
       return {
         targetUrl: 'https://www.ab-in-den-urlaub.de/hotels/europa/spanien/mallorca',
-        targetLabel: 'Hotels auf Mallorca (Eigenanreise)',
+        targetLabel: 'Kategorieseite: Hotels auf Mallorca',
         hasRegionMatch: true,
       };
     }
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/eigene-anreise',
-      targetLabel: 'Hotels & Unterkünfte mit eigener Anreise',
+      targetLabel: 'Kategorieseite: Hotels mit eigener Anreise',
       hasRegionMatch: false,
     };
   }
@@ -466,7 +538,7 @@ function resolveAbInDenUrlaubTarget(
   if (combined.includes('side') || combined.includes('kumköy') || combined.includes('manavgat')) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/tuerkei/tuerkische-riviera/side',
-      targetLabel: 'Reiseziel Side & Türkische Riviera',
+      targetLabel: 'Kategorieseite: Urlaub in Side & Türkische Riviera',
       hasRegionMatch: true,
     };
   }
@@ -479,7 +551,7 @@ function resolveAbInDenUrlaubTarget(
   ) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/tuerkei/tuerkische-riviera',
-      targetLabel: 'Reiseziel Türkische Riviera & Antalya',
+      targetLabel: 'Kategorieseite: Urlaub an der Türkischen Riviera',
       hasRegionMatch: true,
     };
   }
@@ -492,14 +564,14 @@ function resolveAbInDenUrlaubTarget(
   ) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/tuerkei',
-      targetLabel: 'Reiseziel Türkei',
+      targetLabel: 'Kategorieseite: Urlaub in der Türkei',
       hasRegionMatch: true,
     };
   }
   if (combined.includes('mallorca') || combined.includes('palma')) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/spanien/mallorca',
-      targetLabel: 'Reiseziel Mallorca (Spanien)',
+      targetLabel: 'Kategorieseite: Urlaub auf Mallorca',
       hasRegionMatch: true,
     };
   }
@@ -514,7 +586,7 @@ function resolveAbInDenUrlaubTarget(
   ) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/spanien',
-      targetLabel: 'Reiseziel Spanien & Inseln',
+      targetLabel: 'Kategorieseite: Urlaub in Spanien',
       hasRegionMatch: true,
     };
   }
@@ -528,7 +600,7 @@ function resolveAbInDenUrlaubTarget(
   ) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/italien',
-      targetLabel: 'Reiseziel Italien',
+      targetLabel: 'Kategorieseite: Urlaub in Italien',
       hasRegionMatch: true,
     };
   }
@@ -540,7 +612,7 @@ function resolveAbInDenUrlaubTarget(
   ) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/griechenland',
-      targetLabel: 'Reiseziel Griechenland & Inseln',
+      targetLabel: 'Kategorieseite: Urlaub in Griechenland',
       hasRegionMatch: true,
     };
   }
@@ -553,28 +625,28 @@ function resolveAbInDenUrlaubTarget(
   ) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/afrika/aegypten',
-      targetLabel: 'Reiseziel Ägypten & Rotes Meer',
+      targetLabel: 'Kategorieseite: Urlaub in Ägypten',
       hasRegionMatch: true,
     };
   }
   if (combined.includes('portugal') || combined.includes('algarve') || combined.includes('lissabon')) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/portugal',
-      targetLabel: 'Reiseziel Portugal & Algarve',
+      targetLabel: 'Kategorieseite: Urlaub in Portugal',
       hasRegionMatch: true,
     };
   }
   if (combined.includes('kroatien') || combined.includes('split') || combined.includes('istrien')) {
     return {
       targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/kroatien',
-      targetLabel: 'Reiseziel Kroatien & Adria',
+      targetLabel: 'Kategorieseite: Urlaub in Kroatien',
       hasRegionMatch: true,
     };
   }
 
   return {
     targetUrl: 'https://www.ab-in-den-urlaub.de/reiseangebote/sommerurlaub',
-    targetLabel: 'Sommerurlaub- & Pauschalreise-Angebote',
+    targetLabel: 'Kategorieseite: Sommerurlaub & Pauschalreisen',
     hasRegionMatch: false,
   };
 }
@@ -582,7 +654,10 @@ function resolveAbInDenUrlaubTarget(
 export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOfferCardData[] {
   const aff = getSavedAffiliateConfig();
   const dest = resolveDestinationInfo(params.destinationText, params.selectedPresetId);
-  const { travelType, originCode, checkInDate, checkOutDate, adults, childrenAges, boardFilter } = params;
+  const effectiveSearchTerm = dest.searchTerm || 'Mallorca';
+  const effectiveCountry = dest.country || 'Europa';
+  const { travelType, originCode, checkInDate, checkOutDate, adults, childrenAges, boardFilter } =
+    params;
 
   const deCheckIn = formatGermanDate(checkInDate);
   const deCheckOut = formatGermanDate(checkOutDate);
@@ -607,7 +682,7 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
     childrenAges.length > 0
       ? `&childCount=${childrenAges.length}&childrenAges=${encodeURIComponent(childrenAges.join(','))}`
       : '';
-  const check24Url = `https://urlaub.check24.de/suche/hotel?search=${encodeURIComponent(dest.searchTerm)}${
+  const check24Url = `https://urlaub.check24.de/suche/hotel?search=${encodeURIComponent(effectiveSearchTerm)}${
     travelType !== 'hotel' ? `&airport=${encodeURIComponent(originCode)}` : ''
   }&transportType=${check24Transport}&departureDate=${checkInDate}&returnDate=${checkOutDate}&adultCount=${adults}${check24ChildrenPart}&sort=price_asc&partnerid=${encodeURIComponent(check24PartnerId)}`;
 
@@ -616,7 +691,7 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
     childrenAges.length > 0
       ? `&children=${encodeURIComponent(childrenAges.map((age) => `1_${age}`).join(','))}`
       : '';
-  const baseExpediaHotelOrPkgUrl = `https://www.expedia.de/Hotel-Search?destination=${encodeURIComponent(dest.searchTerm)}&startDate=${checkInDate}&endDate=${checkOutDate}&d1=${checkInDate}&d2=${checkOutDate}&rooms=1&adults=${adults}${expediaChildrenHotelParam}&sort=PRICE_LOW_TO_HIGH&siteid=6&langid=1031`;
+  const baseExpediaHotelOrPkgUrl = `https://www.expedia.de/Hotel-Search?destination=${encodeURIComponent(effectiveSearchTerm)}&startDate=${checkInDate}&endDate=${checkOutDate}&d1=${checkInDate}&d2=${checkOutDate}&rooms=1&adults=${adults}${expediaChildrenHotelParam}&sort=PRICE_LOW_TO_HIGH&siteid=6&langid=1031`;
 
   const expediaLeg1 = `from:${originCode},to:${dest.iata},departure:${deCheckIn}TANYT`;
   const expediaLeg2 = `from:${dest.iata},to:${originCode},departure:${deCheckOut}TANYT`;
@@ -625,17 +700,22 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   },adults:${adults},seniors:0,infantinlap:Y`;
   const baseExpediaFlightUrl = `https://www.expedia.de/Flights-Search?flight-type=on&mode=search&trip=roundtrip&leg1=${encodeURIComponent(expediaLeg1)}&leg2=${encodeURIComponent(expediaLeg2)}&fromDate=${encodeURIComponent(deCheckIn)}&toDate=${encodeURIComponent(deCheckOut)}&d1=${checkInDate}&d2=${checkOutDate}&passengers=${encodeURIComponent(expediaFlightPassengers)}&options=${encodeURIComponent('cabinclass:economy,sortby:price')}&siteid=6&langid=1031`;
 
-  const targetExpediaInnerUrl = travelType === 'flug' ? baseExpediaFlightUrl : baseExpediaHotelOrPkgUrl;
+  const targetExpediaInnerUrl =
+    travelType === 'flug' ? baseExpediaFlightUrl : baseExpediaHotelOrPkgUrl;
   const expediaUrl = `https://www.expedia.de/affiliate?siteid=6&landingPage=${encodeURIComponent(targetExpediaInnerUrl)}&camref=${encodeURIComponent(expediaCamref)}&creativeref=1101l87346`;
 
-  // 3. ab-in-den-urlaub (Awin awinmid=9369, awinaffid=3034525 mit Zielgebiets- & Themen-Deep-Links)
-  const aiduTarget = resolveAbInDenUrlaubTarget(dest.country, dest.searchTerm, travelType);
+  // 3. ab-in-den-urlaub (Awin awinmid=9369, awinaffid=3034525)
+  const aiduTarget = resolveAbInDenUrlaubTarget(effectiveCountry, effectiveSearchTerm, travelType);
   const buildAiduLink = (targetPage: string) =>
     `https://www.awin1.com/cread.php?awinmid=9369&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent(targetPage)}`;
 
   const abInDenUrlaubUrl = buildAiduLink(aiduTarget.targetUrl);
-  const aiduSommerurlaubUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/reiseangebote/sommerurlaub');
-  const aiduFamilienurlaubUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/reiseangebote/urlaub-mit-kindern');
+  const aiduSommerurlaubUrl = buildAiduLink(
+    'https://www.ab-in-den-urlaub.de/reiseangebote/sommerurlaub'
+  );
+  const aiduFamilienurlaubUrl = buildAiduLink(
+    'https://www.ab-in-den-urlaub.de/reiseangebote/urlaub-mit-kindern'
+  );
   const aiduAllInclusiveUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/urlaub/all-inclusive');
   const aiduLastMinuteUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/lastminute');
 
@@ -644,7 +724,7 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   const tripComHotelUrl = `https://de.trip.com/hotels/list?checkin=${checkInDate}&checkout=${checkOutDate}&adult=${adults}&crn=1&Allianceid=10486295&SID=330669011&locale=de_de`;
   const tripComUrl = travelType === 'hotel' ? tripComHotelUrl : tripComFlightUrl;
 
-  // 5. Aviasales Flug-Metasuche (Travelpayouts Marker 771810)
+  // 5. Aviasales Flug-Preisvergleich (Travelpayouts Marker 771810)
   const aviasalesUrl = `https://www.aviasales.com/search/${originCode.toUpperCase()}${aviaOut}${dest.iata.toUpperCase()}${aviaIn}${adults}${
     childrenAges.length > 0 ? childrenAges.length : ''
   }?currency=eur&marker=${encodeURIComponent(tpMarker)}`;
@@ -652,12 +732,13 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   // 6. DiscoverCars Mietwagen (a_aid=CleverEntdeckt, a_bid=61a4ac81)
   const discoverCarsUrl = `https://www.discovercars.com/de?iata=${encodeURIComponent(dest.iata)}&a_aid=CleverEntdeckt&a_bid=61a4ac81`;
 
-  // 7. ASI Reisen (Individuelle Rundreisen, Winterreisen & Wanderreisen via Awin awinmid=126961, awinaffid=3034525)
-  const asiReisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/gi/individuelle-rundreisen')}`;
+  // 7. ASI Reisen (Geprüfte Awin Deep-Links awinmid=126961, awinaffid=3034525)
+  const asiWanderreisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/a/wanderreisen')}`;
+  const asiRundreisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/gi/individuelle-rundreisen')}`;
   const asiWinterreisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/a/schneeschuhwandern')}`;
 
   // 8. camping.info (Campingplätze & Glamping via Awin awinmid=44063, awinaffid=3034525)
-  const campingSlug = getCampingCountrySlug(dest.country, dest.searchTerm);
+  const campingSlug = getCampingCountrySlug(effectiveCountry, effectiveSearchTerm);
   const campingInfoUrl = `https://www.awin1.com/cread.php?awinmid=44063&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent(`https://www.camping.info/de/land/${campingSlug}`)}`;
 
   // 9. CamperDays & TUI Camper (Wohnmobile via Awin)
@@ -665,293 +746,275 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   const tuiCamperUrl = `https://www.awin1.com/cread.php?awinmid=11934&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.tuicamper.com/')}`;
 
   // 10. Klook Ausflüge & Flughafentransfers (Travelpayouts campaign_id=137, marker=771810)
-  const klookUrl = `https://tp.media/r?campaign_id=137&marker=${encodeURIComponent(tpMarker)}&p=4110&trs=568370&u=${encodeURIComponent(`https://www.klook.com/de/search/result/?query=${encodeURIComponent(dest.searchTerm)}`)}`;
+  const klookUrl = `https://tp.media/r?campaign_id=137&marker=${encodeURIComponent(tpMarker)}&p=4110&trs=568370&u=${encodeURIComponent(`https://www.klook.com/de/search/result/?query=${encodeURIComponent(effectiveSearchTerm)}`)}`;
 
   const offers: PartnerOfferCardData[] = [
     {
       id: 'check24',
-      partnerName: 'CHECK24 Reisevergleich',
+      partnerName: 'CHECK24',
       categoryLabel:
-        travelType === 'hotel'
-          ? 'Hotel- & Unterkunftsvergleich (Eigenanreise)'
-          : 'Pauschalreise- & Veranstaltervergleich',
+        travelType === 'hotel' ? 'Hotelvergleich (Eigene Anreise)' : 'Pauschalreise-Vergleich',
       primaryForTypes: ['pauschal', 'hotel'],
       url: check24Url,
       affiliateNetworkLabel: 'CHECK24 Partnerprogramm',
       affiliateIdSummary: `Partner-ID ${check24PartnerId}`,
       description:
         travelType === 'hotel'
-          ? `Vergleicht verfügbare Hotels und Ferienunterkünfte in ${dest.searchTerm} bei führenden Hotelportalen und Reiseveranstaltern.`
-          : `Vergleicht Pauschalreisen (Flug + Hotel) für ${dest.searchTerm} ab ${originCode} über zahlreiche deutsche Reiseveranstalter.`,
-      includedServicesNote:
-        boardFilter !== 'Beliebig'
-          ? `Gewünschte Verpflegung (${boardFilter}), Gepäck- und Transferoptionen direkt im CHECK24-Filter wählbar.`
-          : 'Flug, Hotel, Transfer- und Gepäckdetails werden pro Veranstalter transparent ausgewiesen.',
+          ? `Vergleicht verfügbare Hotels und Ferienunterkünfte in ${effectiveSearchTerm} für eigene Anreise.`
+          : `Vergleicht Pauschalreisen (Flug + Hotel) nach ${effectiveSearchTerm} bei großen Reiseveranstaltern.`,
+      includedServicesNote: '',
       transferredParams: [
-        `Reiseziel (${dest.searchTerm})`,
-        ...(travelType !== 'hotel' ? [`Abflughafen (${originCode})`] : ['Eigenanreise (Nur Hotel)']),
+        `Reiseziel (${effectiveSearchTerm})`,
+        ...(travelType !== 'hotel' ? [`Abflughafen (${originCode})`] : ['Eigene Anreise']),
         `Zeitraum (${deCheckIn} – ${deCheckOut})`,
         `Reisende (${travelerParamSummary})`,
       ],
       manualParamsAtProvider:
-        boardFilter !== 'Beliebig' ? [`Verpflegungsfilter (${boardFilter})`] : [],
+        boardFilter !== 'Beliebig' ? [`Verpflegung (${boardFilter}) im Filter auswählen`] : [],
       supportsFullDeepLink: true,
-      ctaLabel: 'Aktuelle Preise bei CHECK24 prüfen',
+      ctaLabel: 'Angebote prüfen',
     },
     {
       id: 'expedia',
       partnerName: 'Expedia.de',
       categoryLabel:
         travelType === 'flug'
-          ? 'Linien- & Ferienflüge im Direktvergleich'
+          ? 'Flugsuche (Hin- & Rückflug)'
           : travelType === 'hotel'
-          ? 'Hotels, Resorts & Ferienwohnungen'
-          : 'Hotels, Flüge & flexible Kombi-Reisen',
+          ? 'Hotels & Ferienunterkünfte'
+          : 'Hotels & Kombi-Reisen',
       primaryForTypes: ['pauschal', 'hotel', 'flug'],
       url: expediaUrl,
-      affiliateNetworkLabel: 'Expedia Group / Partnerize',
+      affiliateNetworkLabel: 'Expedia Partnerprogramm',
       affiliateIdSummary: `camref ${expediaCamref}`,
       description:
         travelType === 'flug'
-          ? `Sucht verfügbare Hin- und Rückflüge von ${originCode} nach ${dest.iata} (${dest.searchTerm}) zum gewählten Datum.`
-          : `Zeigt buchbare Hotels, Strandresorts und Unterkünfte in ${dest.searchTerm} – aufsteigend sortiert nach Preis.`,
-      includedServicesNote:
-        travelType === 'flug'
-          ? 'Tarife mit Handgepäck oder Aufgabegepäck direkt bei Expedia auswählbar.'
-          : 'Optionen mit kostenloser Stornierung sowie Frühstück/All-Inclusive direkt bei Expedia einstellbar.',
+          ? `Sucht passende Hin- und Rückflüge von ${originCode} nach ${dest.iata} (${effectiveSearchTerm}).`
+          : travelType === 'hotel'
+          ? `Hotels, Strandresorts und Apartments in ${effectiveSearchTerm} im direkten Preisvergleich.`
+          : `Hotels, Resorts und flexibel kombinierbare Reiseangebote für ${effectiveSearchTerm}.`,
+      includedServicesNote: '',
       transferredParams:
         travelType === 'flug'
           ? [
-              `Abflughafen (${originCode}) & Zielflughafen (${dest.iata})`,
-              `Flugdaten (${deCheckIn} – ${deCheckOut})`,
-              `Passagiere (${travelerParamSummary})`,
+              `Flugstrecke (${originCode} ↔ ${dest.iata})`,
+              `Reisedaten (${deCheckIn} – ${deCheckOut})`,
+              `Reisende (${travelerParamSummary})`,
             ]
           : [
-              `Reiseziel (${dest.searchTerm})`,
-              `Check-in & Check-out (${deCheckIn} – ${deCheckOut})`,
-              `Gäste (${travelerParamSummary})`,
+              `Reiseziel (${effectiveSearchTerm})`,
+              `Zeitraum (${deCheckIn} – ${deCheckOut})`,
+              `Reisende (${travelerParamSummary})`,
             ],
       manualParamsAtProvider:
-        travelType === 'pauschal'
-          ? ['Optional: Flug-Filter auf Expedia zuschalten']
-          : [],
+        travelType === 'pauschal' ? ['Bei Bedarf auf Expedia den Flug-Filter ergänzen'] : [],
       supportsFullDeepLink: true,
-      ctaLabel: 'Aktuelle Preise bei Expedia prüfen',
+      ctaLabel: 'Angebote prüfen',
     },
     {
       id: 'ab-in-den-urlaub',
       partnerName: 'ab-in-den-urlaub.de',
-      categoryLabel: 'Pauschalreisen, Sommerurlaub, Familien & Last Minute',
+      categoryLabel:
+        travelType === 'hotel'
+          ? 'Hotels mit eigener Anreise'
+          : 'Pauschalreisen, Familien & Last Minute',
       primaryForTypes: ['pauschal', 'hotel'],
       url: abInDenUrlaubUrl,
       affiliateNetworkLabel: 'Awin Partnerprogramm',
-      affiliateIdSummary: `Awin ID ${awinPubId} (awinmid 9369)`,
+      affiliateIdSummary: `Awin ID ${awinPubId}`,
       description:
-        `Großer deutscher Veranstaltervergleich für Pauschalreisen, Sommerurlaub, All-Inclusive-Strandhotels und Familienangebote (${dest.country}).`,
-      includedServicesNote:
-        'Pauschalangebote beinhalten je nach Veranstalter Hin- & Rückflug, Hotel, ggf. Zug-zum-Flug und Hoteltransfer.',
-      transferredParams: [
-        `Zielseiten-Vorauswahl: ${aiduTarget.targetLabel}`,
-        'Affiliate-Partnerkennung (Awin Deep-Link)',
-      ],
+        travelType === 'hotel'
+          ? `Hotels, Resorts und Ferienanlagen mit eigener Anreise (${effectiveCountry}).`
+          : `Pauschalreisen, All-Inclusive-Hotels und Familienangebote zahlreicher Reiseveranstalter (${effectiveCountry}).`,
+      includedServicesNote: '',
+      transferredParams: [aiduTarget.targetLabel],
       manualParamsAtProvider: [
-        `Reisezeitraum (${deCheckIn} – ${deCheckOut}) & Reisende (${travelerParamSummary}) im Filter bestätigen`,
+        `Reisezeitraum (${deCheckIn} – ${deCheckOut})${
+          travelType === 'pauschal' ? `, Abflughafen (${originCode})` : ''
+        } und Reisende (${travelerParamSummary}) beim Anbieter eingeben`,
       ],
-      supportsFullDeepLink: aiduTarget.hasRegionMatch,
-      ctaLabel: aiduTarget.hasRegionMatch
-        ? `${dest.country}-Angebote bei ab-in-den-urlaub.de prüfen`
-        : 'Angebote bei ab-in-den-urlaub.de prüfen',
-      secondaryAction: {
-        label: 'Sommerurlaub-Angebote bei ab-in-den-urlaub.de',
-        url: aiduSommerurlaubUrl,
-      },
-      additionalActions: [
-        childrenAges.length > 0
+      supportsFullDeepLink: false,
+      ctaLabel: 'Angebote prüfen',
+      secondaryAction:
+        travelType === 'pauschal'
           ? {
-              label: 'Familienurlaub & Reisen mit Kindern ansehen',
-              url: aiduFamilienurlaubUrl,
+              label: 'Sommerurlaub-Angebote ansehen',
+              url: aiduSommerurlaubUrl,
             }
-          : {
-              label: 'All-Inclusive-Angebote bei ab-in-den-urlaub.de',
-              url: aiduAllInclusiveUrl,
-            },
-        {
-          label: 'Last-Minute-Restplätze bei ab-in-den-urlaub.de',
-          url: aiduLastMinuteUrl,
-        },
-      ],
+          : undefined,
+      additionalActions:
+        travelType === 'pauschal'
+          ? [
+              childrenAges.length > 0
+                ? {
+                    label: 'Familienurlaub mit Kindern ansehen',
+                    url: aiduFamilienurlaubUrl,
+                  }
+                : {
+                    label: 'All-Inclusive-Angebote ansehen',
+                    url: aiduAllInclusiveUrl,
+                  },
+              {
+                label: 'Last-Minute-Angebote ansehen',
+                url: aiduLastMinuteUrl,
+              },
+            ]
+          : undefined,
     },
     {
       id: 'tripcom',
       partnerName: 'Trip.com',
       categoryLabel:
-        travelType === 'hotel'
-          ? 'Internationale Hotels & Resorts'
-          : 'Weltweite Flüge & Kombi-Angebote',
-      primaryForTypes: ['flug', 'hotel', 'pauschal'],
+        travelType === 'hotel' ? 'Hotels & Unterkünfte weltweit' : 'Flugvergleich weltweit',
+      primaryForTypes: ['flug', 'hotel'],
       url: tripComUrl,
       affiliateNetworkLabel: 'Trip.com Partnerprogramm',
-      affiliateIdSummary: 'AllianceID 10486295 · SID 330669011',
+      affiliateIdSummary: 'AllianceID 10486295',
       description:
         travelType === 'hotel'
-          ? `Vergleicht internationale Hotelketten und Unterkünfte für den Zeitraum ${deCheckIn} – ${deCheckOut}.`
-          : `Direkte Flugsuche für die Strecke ${originCode} → ${dest.iata} (${dest.searchTerm}) inklusive Linien- und Ferienfliegern.`,
-      includedServicesNote:
-        'Auswahl verschiedener Buchungsklassen, Gepäcktarife und Stornierungsbedingungen direkt im Buchungsschritt.',
+          ? `Große Auswahl an Stadthotels, Strandresorts und Unterkünften zum gewählten Zeitraum.`
+          : `Vergleicht Linien- und Ferienflüge auf der Strecke ${originCode} ↔ ${dest.iata} (${effectiveSearchTerm}).`,
+      includedServicesNote: '',
       transferredParams:
         travelType === 'hotel'
-          ? [
-              `Check-in & Check-out (${deCheckIn} – ${deCheckOut})`,
-              `Erwachsene (${adults})`,
-            ]
+          ? [`Zeitraum (${deCheckIn} – ${deCheckOut})`, `Erwachsene (${adults})`]
           : [
               `Flugstrecke (${originCode} ↔ ${dest.iata})`,
               `Reisedaten (${deCheckIn} – ${deCheckOut})`,
               `Reisende (${travelerParamSummary})`,
             ],
       manualParamsAtProvider:
-        travelType === 'hotel' ? [`Reiseziel (${dest.searchTerm}) im Suchfeld bestätigen`] : [],
-      supportsFullDeepLink: travelType !== 'hotel',
-      ctaLabel: 'Aktuelle Preise bei Trip.com prüfen',
+        travelType === 'hotel'
+          ? [`Reiseziel (${effectiveSearchTerm}) im Suchfeld bei Trip.com eingeben`]
+          : [],
+      supportsFullDeepLink: travelType === 'flug',
+      ctaLabel: 'Angebote prüfen',
     },
     {
       id: 'aviasales',
-      partnerName: 'Aviasales Flug-Metasuche',
-      categoryLabel: 'Reiner Flug-Preisvergleich (Linie & Low-Cost)',
+      partnerName: 'Aviasales',
+      categoryLabel: 'Flug-Preisvergleich (Linie & Direktflug)',
       primaryForTypes: ['flug'],
       url: aviasalesUrl,
       affiliateNetworkLabel: 'Travelpayouts',
       affiliateIdSummary: `Marker ${tpMarker}`,
-      description:
-        `Durchsucht zeitgleich zahlreiche Airlines und Buchungsportale für den Hin- und Rückflug ${originCode} ↔ ${dest.iata}.`,
-      includedServicesNote:
-        'Zeigt Direktflüge und Umsteigeverbindungen im Vergleich. Gepäckgebühren werden beim jeweiligen Ticketanbieter angezeigt.',
+      description: `Vergleicht Flugverbindungen vieler Airlines und Buchungsportale für ${originCode} ↔ ${dest.iata}.`,
+      includedServicesNote: '',
       transferredParams: [
-        `Start- & Zielflughafen (${originCode} ↔ ${dest.iata})`,
-        `Hinflug (${deCheckIn}) & Rückflug (${deCheckOut})`,
+        `Flugstrecke (${originCode} ↔ ${dest.iata})`,
+        `Reisedaten (${deCheckIn} – ${deCheckOut})`,
         `Passagiere (${travelerParamSummary})`,
       ],
       manualParamsAtProvider: [],
       supportsFullDeepLink: true,
-      ctaLabel: 'Flugpreise bei Aviasales prüfen',
+      ctaLabel: 'Angebote prüfen',
+    },
+    {
+      id: 'asi-reisen',
+      partnerName: 'ASI Reisen',
+      categoryLabel: 'Wanderreisen, Rundreisen & Winterreisen',
+      primaryForTypes: [],
+      isSpecialistAddon: 'wandern',
+      url: asiWanderreisenUrl,
+      affiliateNetworkLabel: 'Awin Partnerprogramm',
+      affiliateIdSummary: `Awin ID ${awinPubId} (awinmid 126961)`,
+      description:
+        'Geführte und individuelle Wander- und Trekkingreisen, weltweite Rundreisen sowie Schneeschuhwandern.',
+      includedServicesNote: '',
+      transferredParams: ['Kategorieseite: Wanderreisen bei ASI Reisen'],
+      manualParamsAtProvider: ['Gewünschtes Reiseziel und Zeitraum direkt bei ASI Reisen auswählen'],
+      supportsFullDeepLink: false,
+      ctaLabel: 'Angebote prüfen (Wanderreisen)',
+      secondaryAction: {
+        label: 'Individuelle Rundreisen bei ASI Reisen',
+        url: asiRundreisenUrl,
+      },
+      additionalActions: [
+        {
+          label: 'Schneeschuhwandern & Winterreisen bei ASI Reisen',
+          url: asiWinterreisenUrl,
+        },
+      ],
     },
     {
       id: 'discovercars',
       partnerName: 'DiscoverCars',
-      categoryLabel: 'Mietwagen am Urlaubsort / Flughafen',
+      categoryLabel: 'Mietwagen am Urlaubsort',
       primaryForTypes: [],
       isSpecialistAddon: 'mietwagen',
       url: discoverCarsUrl,
       affiliateNetworkLabel: 'DiscoverCars Partnerprogramm',
       affiliateIdSummary: 'a_aid CleverEntdeckt',
-      description:
-        `Vergleicht lokale und internationale Autovermietungen direkt am Zielflughafen ${dest.iata} (${dest.searchTerm}).`,
-      includedServicesNote:
-        'Faire Tankregelung, Freikilometer und Vollkasko-Optionen transparent im Vergleich wählbar.',
-      transferredParams: [`Abholflughafen / Zielregion (${dest.iata})`],
-      manualParamsAtProvider: [`Abhol- & Rückgabedatum (${deCheckIn} – ${deCheckOut}) auswählen`],
+      description: `Vergleicht Mietwagen-Angebote lokaler und internationaler Vermieter am Zielflughafen ${dest.iata}.`,
+      includedServicesNote: '',
+      transferredParams: [`Abholregion / Zielflughafen (${dest.iata})`],
+      manualParamsAtProvider: [`Abhol- und Rückgabedatum (${deCheckIn} – ${deCheckOut}) auswählen`],
       supportsFullDeepLink: true,
-      ctaLabel: 'Mietwagen bei DiscoverCars prüfen',
-    },
-    {
-      id: 'asi-reisen',
-      partnerName: 'ASI Reisen',
-      categoryLabel: 'Individuelle Rundreisen, Winter- & Wanderreisen',
-      primaryForTypes: ['pauschal'],
-      isSpecialistAddon: 'wandern',
-      url: asiReisenUrl,
-      affiliateNetworkLabel: 'Awin Partnerprogramm',
-      affiliateIdSummary: `Awin ID ${awinPubId} (awinmid 126961)`,
-      description:
-        `Spezialist für individuell geplante Rundreisen, Winter- & Schneeschuhreisen sowie geführte und individuelle Wanderreisen (${dest.country} & weltweit).`,
-      includedServicesNote:
-        'Je nach Reise inkl. sorgfältig ausgewählter Unterkünfte, Routenplanung, Mietwagen/Transfers und optionalem Flug.',
-      transferredParams: ['Direktlinks zu Rundreisen, Winterreisen & Wanderreisen (Awin Deep-Links)'],
-      manualParamsAtProvider: [`Wunschregion (${dest.searchTerm}) & Reisetermin auf der Zielseite wählen`],
-      supportsFullDeepLink: false,
-      ctaLabel: 'Individuelle Rundreisen bei ASI Reisen prüfen',
-      secondaryAction: {
-        label: 'Winter- & Schneeschuhreisen bei ASI Reisen ansehen',
-        url: asiWinterreisenUrl,
-      },
-      additionalActions: [
-        {
-          label: 'Wander- & Trekkingreisen bei ASI Reisen ansehen',
-          url: `https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=${encodeURIComponent(awinPubId)}`,
-        },
-      ],
+      ctaLabel: 'Angebote prüfen',
     },
     {
       id: 'camping-info',
       partnerName: 'camping.info',
-      categoryLabel: 'Campingplätze, Stellplätze & Mietunterkünfte',
+      categoryLabel: 'Campingplätze & Mobilheime',
       primaryForTypes: [],
       isSpecialistAddon: 'camping',
       url: campingInfoUrl,
       affiliateNetworkLabel: 'Awin Partnerprogramm',
-      affiliateIdSummary: `Awin ID ${awinPubId} (Merchant 44063)`,
-      description:
-        `Über 23.000 Campingplätze, Glamping-Unterkünfte und Wohnmobil-Stellplätze in ${dest.country} und ganz Europa mit echten Camper-Bewertungen.`,
-      includedServicesNote:
-        'Direkte Online-Verfügbarkeitsprüfung für Standplätze, Mobilheime und Bungalows.',
-      transferredParams: [`Zielland-Vorauswahl (${dest.country})`],
-      manualParamsAtProvider: [`An-/Abreisedatum (${deCheckIn} – ${deCheckOut}) & Personen eingeben`],
-      supportsFullDeepLink: true,
-      ctaLabel: `Campingplätze in ${dest.country} prüfen`,
+      affiliateIdSummary: `Awin ID ${awinPubId}`,
+      description: `Campingplätze, Glamping und Mietunterkünfte in ${effectiveCountry} und ganz Europa.`,
+      includedServicesNote: '',
+      transferredParams: [`Zielland (${effectiveCountry})`],
+      manualParamsAtProvider: [`Reisezeitraum (${deCheckIn} – ${deCheckOut}) und Personen eingeben`],
+      supportsFullDeepLink: false,
+      ctaLabel: 'Angebote prüfen',
     },
     {
       id: 'camperdays',
       partnerName: 'CamperDays',
-      categoryLabel: 'Wohnmobil- & Camper-Preisvergleich',
+      categoryLabel: 'Wohnmobile & Camper mieten',
       primaryForTypes: [],
       isSpecialistAddon: 'camping',
       url: camperDaysUrl,
       affiliateNetworkLabel: 'Awin Partnerprogramm',
-      affiliateIdSummary: `Awin ID ${awinPubId} (Merchant 52889)`,
-      description:
-        'Vergleicht Miet-Wohnmobile und Kastenwagen führender Vermieter weltweit ohne versteckte Gebühren.',
-      includedServicesNote:
-        'Transparente Versicherungs- und Kilometerpakete direkt im Buchungsvergleich.',
-      transferredParams: ['Affiliate-Partnerkennung (Awin)'],
-      manualParamsAtProvider: ['Abholstation und Mietzeitraum beim Anbieter wählen'],
+      affiliateIdSummary: `Awin ID ${awinPubId}`,
+      description: 'Preisvergleich für Miet-Wohnmobile und Campervans weltweit.',
+      includedServicesNote: '',
+      transferredParams: ['Startseite Wohnmobil-Vergleich'],
+      manualParamsAtProvider: ['Abholort und Mietzeitraum beim Anbieter auswählen'],
       supportsFullDeepLink: false,
-      ctaLabel: 'Wohnmobile bei CamperDays vergleichen',
+      ctaLabel: 'Angebote prüfen',
     },
     {
       id: 'tui-camper',
       partnerName: 'TUI Camper',
-      categoryLabel: 'Wohnmobile & Camper weltweit mieten',
+      categoryLabel: 'Wohnmobile weltweit mieten',
       primaryForTypes: [],
       isSpecialistAddon: 'camping',
       url: tuiCamperUrl,
       affiliateNetworkLabel: 'Awin Partnerprogramm',
-      affiliateIdSummary: `Awin ID ${awinPubId} (Merchant 11934)`,
-      description:
-        'Wohnmobil-Angebote mit TUI-Qualitätsstandards für Rundreisen in Europa und Übersee.',
-      includedServicesNote:
-        'Inklusive Beratung, Versicherungsschutz und flexiblen Stornierungsoptionen.',
-      transferredParams: ['Affiliate-Partnerkennung (Awin)'],
-      manualParamsAtProvider: ['Abholort und Reisedaten bei TUI Camper eingeben'],
+      affiliateIdSummary: `Awin ID ${awinPubId}`,
+      description: 'Wohnmobil-Angebote von TUI für Europa und weltweite Rundreisen.',
+      includedServicesNote: '',
+      transferredParams: ['Startseite TUI Camper'],
+      manualParamsAtProvider: ['Abholstation und Reisedaten beim Anbieter eingeben'],
       supportsFullDeepLink: false,
-      ctaLabel: 'Angebote bei TUI Camper prüfen',
+      ctaLabel: 'Angebote prüfen',
     },
     {
       id: 'klook',
-      partnerName: 'Klook Ausflüge & Transfers',
-      categoryLabel: 'Flughafentransfers, Touren & Tickets vor Ort',
+      partnerName: 'Klook',
+      categoryLabel: 'Ausflüge, Tickets & Transfers vor Ort',
       primaryForTypes: [],
-      isSpecialistAddon: 'aktiv_wandern' as unknown as 'wandern',
+      isSpecialistAddon: 'wandern',
       url: klookUrl,
       affiliateNetworkLabel: 'Travelpayouts',
       affiliateIdSummary: `Marker ${tpMarker}`,
-      description:
-        `Geprüfte Ausflüge, Sehenswürdigkeiten-Tickets und private Flughafentransfers für ${dest.searchTerm}.`,
-      includedServicesNote:
-        'Sofortige Ticketbestätigung auf dem Smartphone – ideal als Ergänzung zur gebuchten Reise.',
-      transferredParams: [`Zielort-Suche (${dest.searchTerm})`],
-      manualParamsAtProvider: ['Wunschdatum für Ausflug oder Transfer wählen'],
+      description: `Ausflüge, Sehenswürdigkeiten-Tickets und Flughafentransfers für ${effectiveSearchTerm}.`,
+      includedServicesNote: '',
+      transferredParams: [`Zielort (${effectiveSearchTerm})`],
+      manualParamsAtProvider: ['Wunschdatum beim Anbieter auswählen'],
       supportsFullDeepLink: true,
-      ctaLabel: 'Ausflüge & Transfers bei Klook ansehen',
+      ctaLabel: 'Angebote prüfen',
     },
   ];
 
