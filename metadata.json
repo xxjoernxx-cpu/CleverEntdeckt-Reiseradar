@@ -1,6 +1,6 @@
 {
   "name": "Sparflug & ReiseRadar",
-  "description": "Intelligente Tiefpreis-Reisesuche mit flexiblem Preiskalender, Multi-Airport-Optimierung, Split-Ticketing-Rechner und Überall-Entdecker.",
+  "description": "CleverEntdeckt ReiseRadar – Wähle dein Reiseziel und vergleiche passende Reiseangebote unserer Partner für Pauschalreisen, Hotels, Flüge, Mietwagen und Aktivreisen.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
