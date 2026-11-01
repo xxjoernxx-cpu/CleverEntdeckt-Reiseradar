@@ -405,7 +405,7 @@ export const DEFAULT_AFFILIATE_CONFIG: AffiliatePartnerConfig = {
   customSkyscannerUrl: 'https://www.aviasales.com/?marker=771810', // User's official Aviasales Flight Metasearch via Travelpayouts Marker 771810
   customAbInDenUrlaubUrl: 'https://www.awin1.com/cread.php?s=2307983&v=9369&q=339342&r=3034525', // User's official Ab in den Urlaub Awin Link pre-configured
   customTripComUrl: 'https://de.trip.com/?Allianceid=10486295&SID=330669011&locale=de_de', // User's official Trip.com Affiliate Link (Allianceid=10486295, SID=330669011) pre-configured
-  customSnowTrexUrl: 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525', // User's official ASI Reisen Berg- & Aktivreisen Awin Link pre-configured
+  customSnowTrexUrl: 'https://www.awin1.com/cread.php?awinmid=126961&awinaffid=3034525&ued=https%3A%2F%2Fwww.asi-reisen.de%2Fgi%2Findividuelle-rundreisen', // User's official ASI Reisen Individuelle Rundreisen & Aktivreisen Awin Deep-Link
   extraPartners: DEFAULT_EXTRA_PARTNERS,
   useExpediaForFlightsIfNoSkyscanner: true,
 };
@@ -429,6 +429,7 @@ export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
           item.url &&
           item.id !== 'asi-reisen-awin-126961' &&
           !item.url.includes('v=126961') &&
+          !item.url.includes('awinmid=126961') &&
           !mergedExtras.some((def) => def.id === item.id || def.url === item.url)
         ) {
           mergedExtras.push(item);
@@ -452,9 +453,11 @@ export function getSavedAffiliateConfig(): AffiliatePartnerConfig {
         customTripComUrl: parsed?.customTripComUrl?.trim()
           ? parsed.customTripComUrl
           : 'https://de.trip.com/?Allianceid=10486295&SID=330669011&locale=de_de',
-        customSnowTrexUrl: parsed?.customSnowTrexUrl?.trim()
-          ? parsed.customSnowTrexUrl
-          : 'https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=3034525',
+        customSnowTrexUrl:
+          parsed?.customSnowTrexUrl?.trim() &&
+          !parsed.customSnowTrexUrl.includes('s=4805736')
+            ? parsed.customSnowTrexUrl
+            : 'https://www.awin1.com/cread.php?awinmid=126961&awinaffid=3034525&ued=https%3A%2F%2Fwww.asi-reisen.de%2Fgi%2Findividuelle-rundreisen',
         customSkyscannerUrl: parsed?.customSkyscannerUrl?.trim()
           ? parsed.customSkyscannerUrl
           : 'https://www.aviasales.com/?marker=771810',
@@ -835,14 +838,14 @@ export function buildProviderBookingLinks(params: {
     'partnerid'
   );
 
-  // 8c. ASI Reisen (Wander-, Trekking-, Berg- & Naturreisen via Awin v=126961)
+  // 8c. ASI Reisen (Individuelle Rundreisen, Wander-, Trekking- & Naturreisen via Awin awinmid=126961 & awinaffid=3034525)
   const hasDirectSnowTrex = Boolean(aff.customSnowTrexUrl?.trim());
-  const baseSnowTrexUrl = `https://www.asi-reisen.de/`;
+  const baseSnowTrexUrl = `https://www.asi-reisen.de/gi/individuelle-rundreisen`;
   const snowTrexUrl = resolveCustomAffiliateUrl(
     aff.customSnowTrexUrl,
     baseSnowTrexUrl,
     'asi-reisen',
-    'partnerid'
+    'awinaffid'
   );
 
   // 9. Transfer & Activities (Klook Partner Link)

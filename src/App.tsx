@@ -372,23 +372,19 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900">
       {/* Top Bar Contract: 3 Zones separated by gap-8 */}
-      <header className="sticky top-0 z-30 bg-[#0B3C6D] text-white border-b border-white/15 px-4 sm:px-6 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-8">
-          {/* Zone 1: Brand with original CleverEntdeckt red heart */}
+      <header className="sticky top-0 z-30 bg-[#0B3C6D] text-white border-b border-white/15 px-3 sm:px-6 py-2">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 sm:gap-8">
+          {/* Zone 1: Original CleverEntdeckt Logo oben links */}
           <a
             href="#suche"
-            className="inline-flex items-center gap-2 text-lg sm:text-xl font-bold tracking-tight text-white whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F4B400] rounded"
+            aria-label="CleverEntdeckt ReiseRadar – Zurück zur Suchmaske"
+            className="inline-flex items-center gap-2.5 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F4B400] rounded-lg"
           >
-            <span>Clever</span>
-            <svg
-              className="w-5 h-5 text-[#E11D48] fill-current shrink-0"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-            <span>Entdeckt</span>
-            <span className="text-[#F4B400] font-semibold">ReiseRadar</span>
+            <img
+              src="/assets/aistudio/Logo_perfekt_524e9520.png"
+              alt="CleverEntdeckt – Clever entdecken. Besser entscheiden."
+              className="h-12 sm:h-14 md:h-16 w-auto object-contain rounded-md"
+            />
           </a>
 
           {/* Zone 2: Clean single-line navigation links */}
@@ -979,7 +975,7 @@ export default function App() {
                   }`}
                 >
                   <Mountain className="w-4 h-4" />
-                  <span>Aktiv, Wandern & Ausflüge</span>
+                  <span>Rundreisen, Wandern & Ausflüge</span>
                 </button>
                 <button
                   type="button"
@@ -1115,6 +1111,47 @@ export default function App() {
                       <span>{offer.ctaLabel}</span>
                       <ExternalLink className="w-4 h-4 shrink-0 text-[#F4B400]" />
                     </a>
+
+                    {offer.secondaryAction && (
+                      <a
+                        href={offer.secondaryAction.url}
+                        target="_blank"
+                        rel="sponsored noopener noreferrer"
+                        onClick={() =>
+                          trackReiseRadarPartnerClick(
+                            `${offer.id}-secondary`,
+                            offer.partnerName,
+                            travelType,
+                            resolvedDest.searchTerm
+                          )
+                        }
+                        className="mt-2.5 w-full min-h-[42px] px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B3C6D] font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <span>{offer.secondaryAction.label}</span>
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0 text-[#0B3C6D]" />
+                      </a>
+                    )}
+
+                    {offer.additionalActions?.map((action, idx) => (
+                      <a
+                        key={action.url}
+                        href={action.url}
+                        target="_blank"
+                        rel="sponsored noopener noreferrer"
+                        onClick={() =>
+                          trackReiseRadarPartnerClick(
+                            `${offer.id}-extra-${idx}`,
+                            offer.partnerName,
+                            travelType,
+                            resolvedDest.searchTerm
+                          )
+                        }
+                        className="mt-2 w-full min-h-[42px] px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B3C6D] font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <span>{action.label}</span>
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0 text-[#0B3C6D]" />
+                      </a>
+                    ))}
                   </div>
                 </article>
               ))}

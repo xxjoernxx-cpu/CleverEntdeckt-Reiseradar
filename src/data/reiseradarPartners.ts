@@ -302,6 +302,14 @@ export interface PartnerOfferCardData {
   manualParamsAtProvider: string[];
   supportsFullDeepLink: boolean;
   ctaLabel: string;
+  secondaryAction?: {
+    label: string;
+    url: string;
+  };
+  additionalActions?: Array<{
+    label: string;
+    url: string;
+  }>;
 }
 
 export function resolveDestinationInfo(destinationText: string, selectedPresetId: string): {
@@ -418,6 +426,159 @@ function getCampingCountrySlug(country: string, searchTerm: string): string {
   return 'deutschland';
 }
 
+function resolveAbInDenUrlaubTarget(
+  country: string,
+  searchTerm: string,
+  travelType: PrimaryTravelType
+): { targetUrl: string; targetLabel: string; hasRegionMatch: boolean } {
+  const combined = `${country} ${searchTerm}`.toLowerCase();
+
+  if (travelType === 'hotel') {
+    if (
+      combined.includes('side') ||
+      combined.includes('kumköy') ||
+      combined.includes('antalya') ||
+      combined.includes('alanya') ||
+      combined.includes('belek') ||
+      combined.includes('riviera')
+    ) {
+      return {
+        targetUrl: 'https://www.ab-in-den-urlaub.de/hotels/europa/tuerkei/tuerkische-riviera',
+        targetLabel: 'Hotels an der Türkischen Riviera (Eigenanreise)',
+        hasRegionMatch: true,
+      };
+    }
+    if (combined.includes('mallorca') || combined.includes('palma')) {
+      return {
+        targetUrl: 'https://www.ab-in-den-urlaub.de/hotels/europa/spanien/mallorca',
+        targetLabel: 'Hotels auf Mallorca (Eigenanreise)',
+        hasRegionMatch: true,
+      };
+    }
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/eigene-anreise',
+      targetLabel: 'Hotels & Unterkünfte mit eigener Anreise',
+      hasRegionMatch: false,
+    };
+  }
+
+  // Pauschalreise & Urlaub nach Zielregion
+  if (combined.includes('side') || combined.includes('kumköy') || combined.includes('manavgat')) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/tuerkei/tuerkische-riviera/side',
+      targetLabel: 'Reiseziel Side & Türkische Riviera',
+      hasRegionMatch: true,
+    };
+  }
+  if (
+    combined.includes('antalya') ||
+    combined.includes('alanya') ||
+    combined.includes('belek') ||
+    combined.includes('lara') ||
+    combined.includes('riviera')
+  ) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/tuerkei/tuerkische-riviera',
+      targetLabel: 'Reiseziel Türkische Riviera & Antalya',
+      hasRegionMatch: true,
+    };
+  }
+  if (
+    combined.includes('türkei') ||
+    combined.includes('tuerkei') ||
+    combined.includes('izmir') ||
+    combined.includes('bodrum') ||
+    combined.includes('istanbul')
+  ) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/tuerkei',
+      targetLabel: 'Reiseziel Türkei',
+      hasRegionMatch: true,
+    };
+  }
+  if (combined.includes('mallorca') || combined.includes('palma')) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/spanien/mallorca',
+      targetLabel: 'Reiseziel Mallorca (Spanien)',
+      hasRegionMatch: true,
+    };
+  }
+  if (
+    combined.includes('spanien') ||
+    combined.includes('teneriffa') ||
+    combined.includes('gran canaria') ||
+    combined.includes('kanaren') ||
+    combined.includes('andalusien') ||
+    combined.includes('malaga') ||
+    combined.includes('barcelona')
+  ) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/spanien',
+      targetLabel: 'Reiseziel Spanien & Inseln',
+      hasRegionMatch: true,
+    };
+  }
+  if (
+    combined.includes('italien') ||
+    combined.includes('rom') ||
+    combined.includes('sizilien') ||
+    combined.includes('amalfi') ||
+    combined.includes('neapel') ||
+    combined.includes('gardasee')
+  ) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/italien',
+      targetLabel: 'Reiseziel Italien',
+      hasRegionMatch: true,
+    };
+  }
+  if (
+    combined.includes('griechenland') ||
+    combined.includes('kreta') ||
+    combined.includes('rhodos') ||
+    combined.includes('kos')
+  ) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/griechenland',
+      targetLabel: 'Reiseziel Griechenland & Inseln',
+      hasRegionMatch: true,
+    };
+  }
+  if (
+    combined.includes('ägypten') ||
+    combined.includes('aegypten') ||
+    combined.includes('hurghada') ||
+    combined.includes('rotes meer') ||
+    combined.includes('marsa alam')
+  ) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/afrika/aegypten',
+      targetLabel: 'Reiseziel Ägypten & Rotes Meer',
+      hasRegionMatch: true,
+    };
+  }
+  if (combined.includes('portugal') || combined.includes('algarve') || combined.includes('lissabon')) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/portugal',
+      targetLabel: 'Reiseziel Portugal & Algarve',
+      hasRegionMatch: true,
+    };
+  }
+  if (combined.includes('kroatien') || combined.includes('split') || combined.includes('istrien')) {
+    return {
+      targetUrl: 'https://www.ab-in-den-urlaub.de/urlaub/europa/kroatien',
+      targetLabel: 'Reiseziel Kroatien & Adria',
+      hasRegionMatch: true,
+    };
+  }
+
+  return {
+    targetUrl: 'https://www.ab-in-den-urlaub.de/reiseangebote/sommerurlaub',
+    targetLabel: 'Sommerurlaub- & Pauschalreise-Angebote',
+    hasRegionMatch: false,
+  };
+}
+
 export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOfferCardData[] {
   const aff = getSavedAffiliateConfig();
   const dest = resolveDestinationInfo(params.destinationText, params.selectedPresetId);
@@ -467,10 +628,16 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   const targetExpediaInnerUrl = travelType === 'flug' ? baseExpediaFlightUrl : baseExpediaHotelOrPkgUrl;
   const expediaUrl = `https://www.expedia.de/affiliate?siteid=6&landingPage=${encodeURIComponent(targetExpediaInnerUrl)}&camref=${encodeURIComponent(expediaCamref)}&creativeref=1101l87346`;
 
-  // 3. ab-in-den-urlaub (Awin v=9369, r=3034525)
-  const abInDenUrlaubUrl =
-    aff.customAbInDenUrlaubUrl?.trim() ||
-    `https://www.awin1.com/cread.php?s=2307983&v=9369&q=339342&r=${encodeURIComponent(awinPubId)}`;
+  // 3. ab-in-den-urlaub (Awin awinmid=9369, awinaffid=3034525 mit Zielgebiets- & Themen-Deep-Links)
+  const aiduTarget = resolveAbInDenUrlaubTarget(dest.country, dest.searchTerm, travelType);
+  const buildAiduLink = (targetPage: string) =>
+    `https://www.awin1.com/cread.php?awinmid=9369&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent(targetPage)}`;
+
+  const abInDenUrlaubUrl = buildAiduLink(aiduTarget.targetUrl);
+  const aiduSommerurlaubUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/reiseangebote/sommerurlaub');
+  const aiduFamilienurlaubUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/reiseangebote/urlaub-mit-kindern');
+  const aiduAllInclusiveUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/urlaub/all-inclusive');
+  const aiduLastMinuteUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/lastminute');
 
   // 4. Trip.com (Flug & Hotel mit Allianceid=10486295, SID=330669011)
   const tripComFlightUrl = `https://de.trip.com/flights/${originCode.toLowerCase()}-to-${dest.iata.toLowerCase()}/tickets-${originCode.toLowerCase()}-${dest.iata.toLowerCase()}?dcity=${originCode.toLowerCase()}&acity=${dest.iata.toLowerCase()}&ddate=${checkInDate}&rdate=${checkOutDate}&flighttype=rt&class=y&quantity=${adults}&childqty=${childrenAges.length}&Allianceid=10486295&SID=330669011&locale=de_de`;
@@ -485,10 +652,9 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   // 6. DiscoverCars Mietwagen (a_aid=CleverEntdeckt, a_bid=61a4ac81)
   const discoverCarsUrl = `https://www.discovercars.com/de?iata=${encodeURIComponent(dest.iata)}&a_aid=CleverEntdeckt&a_bid=61a4ac81`;
 
-  // 7. ASI Reisen (Aktiv-, Wander- & Naturreisen via Awin v=126961, r=3034525)
-  const asiReisenUrl =
-    aff.customSnowTrexUrl?.trim() ||
-    `https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=${encodeURIComponent(awinPubId)}`;
+  // 7. ASI Reisen (Individuelle Rundreisen, Winterreisen & Wanderreisen via Awin awinmid=126961, awinaffid=3034525)
+  const asiReisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/gi/individuelle-rundreisen')}`;
+  const asiWinterreisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/a/schneeschuhwandern')}`;
 
   // 8. camping.info (Campingplätze & Glamping via Awin awinmid=44063, awinaffid=3034525)
   const campingSlug = getCampingCountrySlug(dest.country, dest.searchTerm);
@@ -575,23 +741,45 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
     {
       id: 'ab-in-den-urlaub',
       partnerName: 'ab-in-den-urlaub.de',
-      categoryLabel: 'Pauschalreisen, Last Minute & Familienurlaub',
+      categoryLabel: 'Pauschalreisen, Sommerurlaub, Familien & Last Minute',
       primaryForTypes: ['pauschal', 'hotel'],
       url: abInDenUrlaubUrl,
       affiliateNetworkLabel: 'Awin Partnerprogramm',
-      affiliateIdSummary: `Awin ID ${awinPubId} (Merchant 9369)`,
+      affiliateIdSummary: `Awin ID ${awinPubId} (awinmid 9369)`,
       description:
-        'Großes deutsches Portal für klassische Pauschalreisen, All-Inclusive-Strandhotels und kurzfristige Restplätze.',
+        `Großer deutscher Veranstaltervergleich für Pauschalreisen, Sommerurlaub, All-Inclusive-Strandhotels und Familienangebote (${dest.country}).`,
       includedServicesNote:
         'Pauschalangebote beinhalten je nach Veranstalter Hin- & Rückflug, Hotel, ggf. Zug-zum-Flug und Hoteltransfer.',
-      transferredParams: ['Affiliate-Partnerkennung (Awin)'],
-      manualParamsAtProvider: [
-        `Reiseziel (${dest.searchTerm})`,
-        `Reisezeitraum (${deCheckIn} – ${deCheckOut})`,
-        `Reisende (${travelerParamSummary})`,
+      transferredParams: [
+        `Zielseiten-Vorauswahl: ${aiduTarget.targetLabel}`,
+        'Affiliate-Partnerkennung (Awin Deep-Link)',
       ],
-      supportsFullDeepLink: false,
-      ctaLabel: 'Zur Suche bei ab-in-den-urlaub.de',
+      manualParamsAtProvider: [
+        `Reisezeitraum (${deCheckIn} – ${deCheckOut}) & Reisende (${travelerParamSummary}) im Filter bestätigen`,
+      ],
+      supportsFullDeepLink: aiduTarget.hasRegionMatch,
+      ctaLabel: aiduTarget.hasRegionMatch
+        ? `${dest.country}-Angebote bei ab-in-den-urlaub.de prüfen`
+        : 'Angebote bei ab-in-den-urlaub.de prüfen',
+      secondaryAction: {
+        label: 'Sommerurlaub-Angebote bei ab-in-den-urlaub.de',
+        url: aiduSommerurlaubUrl,
+      },
+      additionalActions: [
+        childrenAges.length > 0
+          ? {
+              label: 'Familienurlaub & Reisen mit Kindern ansehen',
+              url: aiduFamilienurlaubUrl,
+            }
+          : {
+              label: 'All-Inclusive-Angebote bei ab-in-den-urlaub.de',
+              url: aiduAllInclusiveUrl,
+            },
+        {
+          label: 'Last-Minute-Restplätze bei ab-in-den-urlaub.de',
+          url: aiduLastMinuteUrl,
+        },
+      ],
     },
     {
       id: 'tripcom',
@@ -668,20 +856,30 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
     {
       id: 'asi-reisen',
       partnerName: 'ASI Reisen',
-      categoryLabel: 'Aktiv-, Wander- & Naturreisen',
-      primaryForTypes: [],
+      categoryLabel: 'Individuelle Rundreisen, Winter- & Wanderreisen',
+      primaryForTypes: ['pauschal'],
       isSpecialistAddon: 'wandern',
       url: asiReisenUrl,
       affiliateNetworkLabel: 'Awin Partnerprogramm',
-      affiliateIdSummary: `Awin ID ${awinPubId} (ASI 126961)`,
+      affiliateIdSummary: `Awin ID ${awinPubId} (awinmid 126961)`,
       description:
-        `Spezialist für geführte und individuelle Wanderreisen, Trekkingtouren und Rundreisen in kleinen Gruppen (${dest.country} & weltweit).`,
+        `Spezialist für individuell geplante Rundreisen, Winter- & Schneeschuhreisen sowie geführte und individuelle Wanderreisen (${dest.country} & weltweit).`,
       includedServicesNote:
-        'Je nach Reise inkl. geprüfter Wanderführer, ausgewählter Unterkünfte, Gepäcktransport und optionalem Flug.',
-      transferredParams: ['Affiliate-Partnerkennung (Awin)'],
-      manualParamsAtProvider: [`Gewünschte Wanderregion (${dest.searchTerm}) & Reisetermin wählen`],
+        'Je nach Reise inkl. sorgfältig ausgewählter Unterkünfte, Routenplanung, Mietwagen/Transfers und optionalem Flug.',
+      transferredParams: ['Direktlinks zu Rundreisen, Winterreisen & Wanderreisen (Awin Deep-Links)'],
+      manualParamsAtProvider: [`Wunschregion (${dest.searchTerm}) & Reisetermin auf der Zielseite wählen`],
       supportsFullDeepLink: false,
-      ctaLabel: 'Wanderreisen bei ASI Reisen entdecken',
+      ctaLabel: 'Individuelle Rundreisen bei ASI Reisen prüfen',
+      secondaryAction: {
+        label: 'Winter- & Schneeschuhreisen bei ASI Reisen ansehen',
+        url: asiWinterreisenUrl,
+      },
+      additionalActions: [
+        {
+          label: 'Wander- & Trekkingreisen bei ASI Reisen ansehen',
+          url: `https://www.awin1.com/cread.php?s=4805736&v=126961&q=607249&r=${encodeURIComponent(awinPubId)}`,
+        },
+      ],
     },
     {
       id: 'camping-info',
