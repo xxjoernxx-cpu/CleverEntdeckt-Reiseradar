@@ -651,6 +651,63 @@ function resolveAbInDenUrlaubTarget(
   };
 }
 
+const TRIPCOM_CITY_SLUGS: Record<string, string> = {
+  FRA: 'frankfurt',
+  MUC: 'munich',
+  DUS: 'dusseldorf',
+  BER: 'berlin',
+  HAM: 'hamburg',
+  STR: 'stuttgart',
+  CGN: 'cologne',
+  HAJ: 'hanover',
+  NUE: 'nuremberg',
+  LEJ: 'leipzig',
+  FMM: 'memmingen',
+  DTM: 'dortmund',
+  VIE: 'vienna',
+  SZG: 'salzburg',
+  ZRH: 'zurich',
+  BSL: 'basel',
+  PMI: 'palma-de-mallorca',
+  AYT: 'antalya',
+  ADB: 'izmir',
+  BJV: 'bodrum',
+  IST: 'istanbul',
+  TFS: 'tenerife',
+  LPA: 'gran-canaria',
+  AGP: 'malaga',
+  BCN: 'barcelona',
+  FCO: 'rome',
+  CTA: 'catania',
+  NAP: 'naples',
+  BGY: 'milan',
+  HER: 'heraklion',
+  RHO: 'rhodes',
+  HRG: 'hurghada',
+  FAO: 'faro',
+  SPU: 'split',
+  DXB: 'dubai',
+  BKK: 'bangkok',
+};
+
+function getTripComCitySlug(iataCode: string, fallbackName?: string): string {
+  const upper = iataCode.toUpperCase();
+  if (TRIPCOM_CITY_SLUGS[upper]) {
+    return TRIPCOM_CITY_SLUGS[upper];
+  }
+  if (fallbackName) {
+    return fallbackName
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+  return upper.toLowerCase();
+}
+
 export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOfferCardData[] {
   const aff = getSavedAffiliateConfig();
   const dest = resolveDestinationInfo(params.destinationText, params.selectedPresetId);
@@ -719,10 +776,28 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   const aiduAllInclusiveUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/urlaub/all-inclusive');
   const aiduLastMinuteUrl = buildAiduLink('https://www.ab-in-den-urlaub.de/lastminute');
 
-  // 4. Trip.com (Flug & Hotel mit Allianceid=10486295, SID=330669011)
-  const tripComFlightUrl = `https://de.trip.com/flights/${originCode.toLowerCase()}-to-${dest.iata.toLowerCase()}/tickets-${originCode.toLowerCase()}-${dest.iata.toLowerCase()}?dcity=${originCode.toLowerCase()}&acity=${dest.iata.toLowerCase()}&ddate=${checkInDate}&rdate=${checkOutDate}&flighttype=rt&class=y&quantity=${adults}&childqty=${childrenAges.length}&Allianceid=10486295&SID=330669011&locale=de_de`;
-  const tripComHotelUrl = `https://de.trip.com/hotels/list?checkin=${checkInDate}&checkout=${checkOutDate}&adult=${adults}&crn=1&Allianceid=10486295&SID=330669011&locale=de_de`;
-  const tripComUrl = travelType === 'hotel' ? tripComHotelUrl : tripComFlightUrl;
+  // 4. Trip.com Komplett-Angebot (Pauschalreisen/Packages, Hotels, Flüge, Mietwagen, Transfers, Ausflüge, Züge)
+  // Mit fester Affiliate-Kennung: Allianceid=10486295, SID=330669011, trip_sub3=D20880694
+  const tripTrackingQuery = 'Allianceid=10486295&SID=330669011&trip_sub1=&trip_sub3=D20880694';
+  const originLower = originCode.toLowerCase();
+  const destLower = dest.iata.toLowerCase();
+  const originSlug = getTripComCitySlug(originCode);
+  const destSlug = getTripComCitySlug(dest.iata, effectiveSearchTerm);
+
+  const tripComPackagesUrl = `https://www.trip.com/packages/list/${originSlug}-to-${destSlug}/${originLower}-to-${destLower}?dCity=${originLower}&aCity=${destLower}&${tripTrackingQuery}`;
+  const tripComFlightUrl = `https://de.trip.com/flights/${originSlug}-to-${destSlug}/tickets-${originLower}-${destLower}?dcity=${originLower}&acity=${destLower}&ddate=${checkInDate}&rdate=${checkOutDate}&flighttype=rt&class=y&quantity=${adults}&childqty=${childrenAges.length}&${tripTrackingQuery}&locale=de_de`;
+  const tripComHotelUrl = `https://de.trip.com/hotels/list?checkin=${checkInDate}&checkout=${checkOutDate}&adult=${adults}&crn=1&${tripTrackingQuery}&locale=de_de`;
+  const tripComCarHireUrl = `https://de.trip.com/carhire/?${tripTrackingQuery}&locale=de_de`;
+  const tripComTransfersUrl = `https://de.trip.com/airport-transfers/?${tripTrackingQuery}&locale=de_de`;
+  const tripComThingsToDoUrl = `https://de.trip.com/things-to-do/?${tripTrackingQuery}&locale=de_de`;
+  const tripComTrainsUrl = `https://de.trip.com/trains/?${tripTrackingQuery}&locale=de_de`;
+
+  const tripComUrl =
+    travelType === 'pauschal'
+      ? tripComPackagesUrl
+      : travelType === 'hotel'
+      ? tripComHotelUrl
+      : tripComFlightUrl;
 
   // 5. Aviasales Flug-Preisvergleich (Travelpayouts Marker 771810)
   const aviasalesUrl = `https://www.aviasales.com/search/${originCode.toUpperCase()}${aviaOut}${dest.iata.toUpperCase()}${aviaIn}${adults}${
@@ -865,18 +940,29 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
       id: 'tripcom',
       partnerName: 'Trip.com',
       categoryLabel:
-        travelType === 'hotel' ? 'Hotels & Unterkünfte weltweit' : 'Flugvergleich weltweit',
-      primaryForTypes: ['flug', 'hotel'],
+        travelType === 'pauschal'
+          ? 'Flug + Hotel Kombi-Reisen (Packages)'
+          : travelType === 'hotel'
+          ? 'Hotels & Unterkünfte weltweit'
+          : 'Flugvergleich weltweit',
+      primaryForTypes: ['pauschal', 'hotel', 'flug'],
       url: tripComUrl,
       affiliateNetworkLabel: 'Trip.com Partnerprogramm',
-      affiliateIdSummary: 'AllianceID 10486295',
+      affiliateIdSummary: 'AllianceID 10486295 / SID 330669011',
       description:
-        travelType === 'hotel'
+        travelType === 'pauschal'
+          ? `Kombi-Reisen (Flug + Hotel) für die Verbindung ${originCode} nach ${dest.iata} (${effectiveSearchTerm}) sowie Hotels, Transfers und Aktivitäten.`
+          : travelType === 'hotel'
           ? `Große Auswahl an Stadthotels, Strandresorts und Unterkünften zum gewählten Zeitraum.`
           : `Vergleicht Linien- und Ferienflüge auf der Strecke ${originCode} ↔ ${dest.iata} (${effectiveSearchTerm}).`,
       includedServicesNote: '',
       transferredParams:
-        travelType === 'hotel'
+        travelType === 'pauschal'
+          ? [
+              `Abflughafen (${originCode})`,
+              `Zielflughafen (${dest.iata} – ${effectiveSearchTerm})`,
+            ]
+          : travelType === 'hotel'
           ? [`Zeitraum (${deCheckIn} – ${deCheckOut})`, `Erwachsene (${adults})`]
           : [
               `Flugstrecke (${originCode} ↔ ${dest.iata})`,
@@ -884,11 +970,50 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
               `Reisende (${travelerParamSummary})`,
             ],
       manualParamsAtProvider:
-        travelType === 'hotel'
+        travelType === 'pauschal'
+          ? [`Reisezeitraum (${deCheckIn} – ${deCheckOut}) und Reisende bei Trip.com auswählen`]
+          : travelType === 'hotel'
           ? [`Reiseziel (${effectiveSearchTerm}) im Suchfeld bei Trip.com eingeben`]
           : [],
       supportsFullDeepLink: travelType === 'flug',
-      ctaLabel: 'Angebote prüfen',
+      ctaLabel:
+        travelType === 'pauschal'
+          ? 'Flug + Hotel Angebote prüfen'
+          : travelType === 'hotel'
+          ? 'Hotels bei Trip.com prüfen'
+          : 'Flüge bei Trip.com prüfen',
+      secondaryAction:
+        travelType === 'pauschal'
+          ? {
+              label: 'Nur Flüge bei Trip.com prüfen',
+              url: tripComFlightUrl,
+            }
+          : {
+              label: 'Flug + Hotel Kombi-Pakete bei Trip.com',
+              url: tripComPackagesUrl,
+            },
+      additionalActions: [
+        ...(travelType !== 'hotel'
+          ? [
+              {
+                label: 'Hotels & Resorts bei Trip.com',
+                url: tripComHotelUrl,
+              },
+            ]
+          : []),
+        {
+          label: 'Mietwagen & Flughafentransfers bei Trip.com',
+          url: tripComCarHireUrl,
+        },
+        {
+          label: 'Ausflüge, Touren & Attraktionen bei Trip.com',
+          url: tripComThingsToDoUrl,
+        },
+        {
+          label: 'Zugtickets & Bahnreisen bei Trip.com',
+          url: tripComTrainsUrl,
+        },
+      ],
     },
     {
       id: 'aviasales',
@@ -951,6 +1076,28 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
       manualParamsAtProvider: [`Abhol- und Rückgabedatum (${deCheckIn} – ${deCheckOut}) auswählen`],
       supportsFullDeepLink: true,
       ctaLabel: 'Angebote prüfen',
+    },
+    {
+      id: 'tripcom-mietwagen',
+      partnerName: 'Trip.com Mietwagen & Transfers',
+      categoryLabel: 'Mietwagen & Flughafentransfers weltweit',
+      primaryForTypes: [],
+      isSpecialistAddon: 'mietwagen',
+      url: tripComCarHireUrl,
+      affiliateNetworkLabel: 'Trip.com Partnerprogramm',
+      affiliateIdSummary: 'AllianceID 10486295 / SID 330669011',
+      description: `Mietwagen am Flughafen oder Urlaubsort sowie buchbare Flughafentransfers zum Hotel.`,
+      includedServicesNote: '',
+      transferredParams: ['Kategorieseite: Mietwagen bei Trip.com'],
+      manualParamsAtProvider: [
+        `Abholort (${effectiveSearchTerm} / ${dest.iata}) und Zeitraum (${deCheckIn} – ${deCheckOut}) eingeben`,
+      ],
+      supportsFullDeepLink: false,
+      ctaLabel: 'Mietwagen bei Trip.com prüfen',
+      secondaryAction: {
+        label: 'Flughafentransfers bei Trip.com prüfen',
+        url: tripComTransfersUrl,
+      },
     },
     {
       id: 'camping-info',
