@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Calendar,
@@ -38,6 +38,12 @@ import {
   formatMoney,
 } from './data/travelData';
 
+const ENTRY_FILTERS = new Map<string, AddonFilterType>([
+  ['radar-camping-vanlife', 'camping_camper'],
+  ['radar-wandern', 'aktiv_wandern'],
+  ['radar-test-mobil', 'camping_camper'],
+]);
+
 function getDefaultDates(): { checkIn: string; checkOut: string } {
   const now = new Date();
   const checkInDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 21);
@@ -53,6 +59,14 @@ function getDefaultDates(): { checkIn: string; checkOut: string } {
 
 export default function App() {
   const defaultDates = useMemo(() => getDefaultDates(), []);
+
+  const entry = useMemo(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const source = new URLSearchParams(window.location.search).get('quelle') || '';
+    const filter = ENTRY_FILTERS.get(source);
+    return filter ? { source, filter } : undefined;
+  }, []);
 
   // Parse URL parameters from CleverEntdeckt country & region guides (e.g. ?ziel=Tuerkei, ?ziel=Side, ?ziel=Spanien, ?ziel=Italien)
   const initialUrlState = useMemo(() => {
@@ -206,7 +220,7 @@ export default function App() {
   const [boardFilter, setBoardFilter] = useState<string>('Beliebig');
 
   // Results & Filter State
-  const [addonFilter, setAddonFilter] = useState<AddonFilterType>('alle_passenden');
+  const [addonFilter, setAddonFilter] = useState<AddonFilterType>(entry?.filter ?? 'alle_passenden');
   const [sortOrder, setSortOrder] = useState<'deeplink_first' | 'alphabetical'>('deeplink_first');
   const [formError, setFormError] = useState<string>('');
   const [copiedPartnerId, setCopiedPartnerId] = useState<string | null>(null);
@@ -216,6 +230,12 @@ export default function App() {
   const [isCurrencyOpen, setIsCurrencyOpen] = useState<boolean>(false);
   const [currencyAmountEur, setCurrencyAmountEur] = useState<number>(500);
   const [targetCurrency, setTargetCurrency] = useState<UserCurrencyCode>('TRY');
+
+  useEffect(() => {
+    if (entry && (!window.location.hash || window.location.hash === '#angebote')) {
+      document.getElementById('angebote')?.scrollIntoView();
+    }
+  }, [entry]);
 
   const hasActiveDestination = Boolean(
     destinationText.trim().length > 0 ||
@@ -244,6 +264,7 @@ export default function App() {
         adults,
         childrenAges,
         boardFilter,
+        awinClickRef: entry?.source,
       }),
     [
       travelType,
@@ -255,6 +276,7 @@ export default function App() {
       adults,
       childrenAges,
       boardFilter,
+      entry,
     ]
   );
 
@@ -892,7 +914,7 @@ export default function App() {
         </section>
 
         {/* SECTION 2: Übersichtliche Darstellung der passenden Reiseangebote */}
-        <section id="angebote" className="py-8 sm:py-12 px-4 sm:px-6">
+        <section id="angebote" className="scroll-mt-20 sm:scroll-mt-24 py-8 sm:py-12 px-4 sm:px-6">
           <div className="max-w-6xl mx-auto">
             {/* Kategorien-Wahl: Hauptsuchergebnisse (Reiseart) vs. getrennte Spezialkategorien */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -1029,36 +1051,38 @@ export default function App() {
                         {currentSectionHeading}
                         {hasActiveDestination ? ` – ${resolvedDest.displayTitle}` : ''}
                       </h2>
-                      <p className="text-sm sm:text-base text-slate-700 mt-1">
-                        <span>{travelTypeLabel}</span>
-                        {travelType !== 'hotel' ? (
-                          <>
-                            <span aria-hidden="true"> · </span>
-                            <span>Ab {selectedAirportObj.label}</span>
-                          </>
-                        ) : (
-                          boardFilter !== 'Beliebig' && (
+                      {(!entry || addonFilter === 'alle_passenden') && (
+                        <p className="text-sm sm:text-base text-slate-700 mt-1">
+                          <span>{travelTypeLabel}</span>
+                          {travelType !== 'hotel' ? (
                             <>
                               <span aria-hidden="true"> · </span>
-                              <span>Verpflegung: {boardFilter}</span>
+                              <span>Ab {selectedAirportObj.label}</span>
                             </>
-                          )
-                        )}
-                        <span aria-hidden="true"> · </span>
-                        <span className="tabular-nums">
-                          {formatGermanDate(checkInDate)} bis {formatGermanDate(checkOutDate)} (
-                          {durationNights} {durationNights === 1 ? 'Nacht' : 'Nächte'})
-                        </span>
-                        <span aria-hidden="true"> · </span>
-                        <span>
-                          {adults} {adults === 1 ? 'Erwachsener' : 'Erwachsene'}
-                          {childrenAges.length > 0
-                            ? `, ${childrenAges.length} ${
-                                childrenAges.length === 1 ? 'Kind' : 'Kinder'
-                              } (${childrenAges.map((a) => `${a} J.`).join(', ')})`
-                            : ''}
-                        </span>
-                      </p>
+                          ) : (
+                            boardFilter !== 'Beliebig' && (
+                              <>
+                                <span aria-hidden="true"> · </span>
+                                <span>Verpflegung: {boardFilter}</span>
+                              </>
+                            )
+                          )}
+                          <span aria-hidden="true"> · </span>
+                          <span className="tabular-nums">
+                            {formatGermanDate(checkInDate)} bis {formatGermanDate(checkOutDate)} (
+                            {durationNights} {durationNights === 1 ? 'Nacht' : 'Nächte'})
+                          </span>
+                          <span aria-hidden="true"> · </span>
+                          <span>
+                            {adults} {adults === 1 ? 'Erwachsener' : 'Erwachsene'}
+                            {childrenAges.length > 0
+                              ? `, ${childrenAges.length} ${
+                                  childrenAges.length === 1 ? 'Kind' : 'Kinder'
+                                } (${childrenAges.map((a) => `${a} J.`).join(', ')})`
+                              : ''}
+                          </span>
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 shrink-0">

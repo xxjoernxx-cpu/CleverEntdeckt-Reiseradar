@@ -285,6 +285,7 @@ export interface SearchParameters {
   adults: number;
   childrenAges: number[]; // e.g., [6, 11]
   boardFilter: string; // 'Beliebig' | 'Frühstück' | 'Halbpension' | 'All Inclusive'
+  awinClickRef?: string;
 }
 
 export interface PartnerOfferCardData {
@@ -727,6 +728,9 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   const expediaCamref = (aff.customExpediaUrl || '1100l6tjov').trim();
   const tpMarker = (aff.travelpayoutsMarker || '771810').trim();
   const awinPubId = (aff.awinPublisherId || '3034525').trim();
+  const awinClickRef = params.awinClickRef ? `&clickref=${encodeURIComponent(params.awinClickRef)}` : '';
+  const buildAwinLink = (advertiserId: number, targetPage: string) =>
+    `https://www.awin1.com/cread.php?awinmid=${advertiserId}&awinaffid=${encodeURIComponent(awinPubId)}${awinClickRef}&ued=${encodeURIComponent(targetPage)}`;
 
   const travelerParamSummary =
     childrenAges.length > 0
@@ -763,8 +767,7 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
 
   // 3. ab-in-den-urlaub (Awin awinmid=9369, awinaffid=3034525)
   const aiduTarget = resolveAbInDenUrlaubTarget(effectiveCountry, effectiveSearchTerm, travelType);
-  const buildAiduLink = (targetPage: string) =>
-    `https://www.awin1.com/cread.php?awinmid=9369&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent(targetPage)}`;
+  const buildAiduLink = (targetPage: string) => buildAwinLink(9369, targetPage);
 
   const abInDenUrlaubUrl = buildAiduLink(aiduTarget.targetUrl);
   const aiduSommerurlaubUrl = buildAiduLink(
@@ -808,17 +811,19 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
   const discoverCarsUrl = `https://www.discovercars.com/de?iata=${encodeURIComponent(dest.iata)}&a_aid=CleverEntdeckt&a_bid=61a4ac81`;
 
   // 7. ASI Reisen (Geprüfte Awin Deep-Links awinmid=126961, awinaffid=3034525)
-  const asiWanderreisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/a/wanderreisen')}`;
-  const asiRundreisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/gi/individuelle-rundreisen')}`;
-  const asiWinterreisenUrl = `https://www.awin1.com/cread.php?awinmid=126961&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.asi-reisen.de/a/schneeschuhwandern')}`;
+  const asiWanderreisenUrl = buildAwinLink(126961, 'https://www.asi-reisen.de/a/wanderreisen');
+  const asiRundreisenUrl = buildAwinLink(126961, 'https://www.asi-reisen.de/gi/individuelle-rundreisen');
+  const asiWinterreisenUrl = buildAwinLink(126961, 'https://www.asi-reisen.de/a/schneeschuhwandern');
 
   // 8. camping.info (Campingplätze & Glamping via Awin awinmid=44063, awinaffid=3034525)
-  const campingSlug = getCampingCountrySlug(effectiveCountry, effectiveSearchTerm);
-  const campingInfoUrl = `https://www.awin1.com/cread.php?awinmid=44063&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent(`https://www.camping.info/de/land/${campingSlug}`)}`;
+  const campingTarget = dest.searchTerm
+    ? `https://www.camping.info/de/land/${getCampingCountrySlug(dest.country, dest.searchTerm)}`
+    : 'https://www.camping.info/de/campingplatz';
+  const campingInfoUrl = buildAwinLink(44063, campingTarget);
 
   // 9. CamperDays & TUI Camper (Wohnmobile via Awin)
-  const camperDaysUrl = `https://www.awin1.com/cread.php?awinmid=52889&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.camperdays.de/')}`;
-  const tuiCamperUrl = `https://www.awin1.com/cread.php?awinmid=11934&awinaffid=${encodeURIComponent(awinPubId)}&ued=${encodeURIComponent('https://www.tuicamper.com/')}`;
+  const camperDaysUrl = buildAwinLink(52889, 'https://www.camperdays.de/');
+  const tuiCamperUrl = buildAwinLink(11934, 'https://www.tuicamper.com/');
 
   // 10. Klook Ausflüge & Flughafentransfers (Travelpayouts campaign_id=137, marker=771810)
   const klookUrl = `https://tp.media/r?campaign_id=137&marker=${encodeURIComponent(tpMarker)}&p=4110&trs=568370&u=${encodeURIComponent(`https://www.klook.com/de/search/result/?query=${encodeURIComponent(effectiveSearchTerm)}`)}`;
@@ -1108,9 +1113,9 @@ export function buildVerifiedPartnerOffers(params: SearchParameters): PartnerOff
       url: campingInfoUrl,
       affiliateNetworkLabel: 'Awin Partnerprogramm',
       affiliateIdSummary: `Awin ID ${awinPubId}`,
-      description: `Campingplätze, Glamping und Mietunterkünfte in ${effectiveCountry} und ganz Europa.`,
+      description: 'Campingplätze, Glamping und Mietunterkünfte in Europa.',
       includedServicesNote: '',
-      transferredParams: [`Zielland (${effectiveCountry})`],
+      transferredParams: [dest.searchTerm ? `Zielland (${effectiveCountry})` : 'Campingplatz-Übersicht für Europa'],
       manualParamsAtProvider: [`Reisezeitraum (${deCheckIn} – ${deCheckOut}) und Personen eingeben`],
       supportsFullDeepLink: false,
       ctaLabel: 'Angebote prüfen',
